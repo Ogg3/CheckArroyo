@@ -1,8 +1,5 @@
 """
 Version 0-5-8
-
-@author: Oskar Anderberg
-
 """
 import time
 import argparse
@@ -91,16 +88,7 @@ def main():
     else:
         parser.error('No mode selected.')
 
-
-"""
-0-speed, 
-1-mode, 
-2-debug, 
-3-time_start, 
-4-time_stop, 
-5-contentmanager, 
-6-msg_id
-"""
+        
 # Write report on findings
 def writeHtmlReport(args):
 
@@ -109,8 +97,6 @@ def writeHtmlReport(args):
     try:
         a = args[0]
         GUI_check = True
-        # input_path, output_path, speed, mode, debug, time_start, time_stop, only_attachments,contentmanager, msg_id
-        # input_path, output_path, speed, mode, time_start, time_stop, contentmanager, msg_id, debug_mode
         args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
     except:
         pass
