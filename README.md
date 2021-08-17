@@ -14,7 +14,7 @@ Arroyo is where conversations are stored. For every message there is a message_t
 
 ## Contentmanagerdb.db
 
-This is where files are linked to a message. Sometimes there is just one key for one file, however with snaps there are multiple sub keys which i linked to for exapmle the layer, the media content, a thumbnail.
+This is where files are linked to a message. Sometimes there is just one key for one file, however with snaps there are multiple sub keys which is linked to for exapmle the layer, the media content, a thumbnail.
 
 ## primary.docobjects
 
