@@ -6,3 +6,11 @@ CheckArroyo_GUI.py - run this for GUI\
 lib.py - help functions
 
 First project on github :D
+
+# How it works
+
+## Arroyo.db
+
+## Contentmanagerdb.db
+
+## primary.docobjects
