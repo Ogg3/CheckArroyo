@@ -1,8 +1,5 @@
 """
 Version 0-5-8
-
-@author: Oskar Anderberg
-
 """
 
 from zipfile import ZipFile
