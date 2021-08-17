@@ -1,8 +1,5 @@
 """
 Version 0-5-8
-
-@author: Oskar Anderberg
-
 """
 import tkinter
 import tkinter as tk
