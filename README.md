@@ -1,5 +1,7 @@
 # CheckArroyo
-Snapchat parser for IOS, Android (soon) and arroyo.db
+Snapchat parser for IOS, Android (soon) and arroyo.db.
+
+The script creates a html report for every conversation ID that was found. The conversation is parsed to check for attachments such as media and audio messages, it also displays the participants of the chat.
 
 CheckArroyo.py - run this in CLI\
 CheckArroyo_GUI.py - run this for GUI\
