@@ -11,7 +11,13 @@ First project on github :D
 
 # Usage
 
-Extract the folder for snapchat as a zip file and then run either the GUI or CLI version
+Extract the folder for snapchat as a zip file and then run either the GUI or CLI version\
+
+IOS - private/var/mobile/Containers/Data/Applications/<ID>\
+Android - 
+Arroyo
+  IOS - private/var/mobile/Containers/Data/Applications/<ID>/Documents/user_scoped/<ID>/arroyo/arroyo.db\
+  Android - 
 
 # Tips
 
