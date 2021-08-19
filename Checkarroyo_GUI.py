@@ -229,7 +229,7 @@ def main():
                 tk.Label(window, text="""
                 How to:
                 1 - Choose a input file
-                2 - Choose output file
+                2 - Choose output folder
                 3 - Select a speed
                 4 - Select a mode
                 5 - Click on "Get content managers"
