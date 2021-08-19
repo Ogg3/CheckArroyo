@@ -7,6 +7,14 @@ lib.py - help functions
 
 First project on github :D
 
+# Usage
+
+Extract the folder for snapchat as a zip file and then run either the GUI or CLI version
+
+# Tips
+
+I recomend using something like AXIOM to parse the conversation if you just want text messages, its much easier to read than in my HTML reports.
+
 # How it works
 
 ## Arroyo.db
