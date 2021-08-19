@@ -127,11 +127,11 @@ def main():
                 mi.config(font=("Courier", "44"))
 
                 # Add logo
-                widget = tk.Label(window, compound='top')
-                widget.p = tk.PhotoImage(file="p.png")
-                widget['text'] = ""
-                widget['image'] = widget.p
-                widget.place(relx=.95, rely=.127, anchor="c")
+                #widget = tk.Label(window, compound='top')
+                #widget.p = tk.PhotoImage(file="p.png")
+                #widget['text'] = ""
+                #widget['image'] = widget.p
+                #widget.place(relx=.95, rely=.127, anchor="c")
 
                 # Lable and entry box to add path
                 tk.Label(window, text="Enter path here. Ex C:\\folder\\input_file").place(relx=.4, rely=.1)
