@@ -51,7 +51,7 @@ def main():
             return
 
         # Write html report while finding content
-        writeHtmlReport(input_path, output_path, args)
+        writeHtmlReport(args)
 
     # Android mode
     elif args.mode == "AND":
