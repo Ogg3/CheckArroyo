@@ -1,12 +1,10 @@
 """
 Version 0-5-8
+github.com/Ogg3/CheckArroyo
 """
 import time
 import argparse
 from lib import *
-
-start_time = time.time()
-
 
 # Main
 def main():
@@ -21,6 +19,7 @@ def main():
                         help='Select speed, F - fast, M - medium, S - slow')
     parser.add_argument('-t1', '--time_start', required=False, action="store", help='Time range start. Ex: 2021-01-01')
     parser.add_argument('-t2', '--time_stop', required=False, action="store", help='Time range stop. Ex: 2021-01-01')
+    parser.add_argument('-msg', '--msg_id', required=False, action="store", help='Make report for only one conversation id')
     parser.add_argument('-d', '--debug_mode', required=False, action="store_true", help='For my sanity')
 
     args = parser.parse_args()
@@ -88,15 +87,27 @@ def main():
     else:
         parser.error('No mode selected.')
 
-        
+
+"""
+0-speed, 
+1-mode, 
+2-debug, 
+3-time_start, 
+4-time_stop, 
+5-contentmanager, 
+6-msg_id
+"""
 # Write report on findings
 def writeHtmlReport(args):
+
+    start_time = time.time()
 
     GUI_check=False
     # Check if CLI or GUI
     try:
         a = args[0]
         GUI_check = True
+        # input_path output_path),speed.get(),mode.get(),time_start),time_stop),contentmanager),msg_id),False])
         args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
     except:
         pass
@@ -104,7 +115,7 @@ def writeHtmlReport(args):
 
     if args.mode == "IOS":
         # Extract needed content
-        arroyo = checkandextract(args.input_path, args.output_path, 'arroyo.db', args)
+        arroyo = checkandextract(args, 'arroyo.db', "file")
         if arroyo is None:
             print("Error: Could not find arroyo.")
             return
@@ -113,26 +124,24 @@ def writeHtmlReport(args):
             contextmanager = displayIOScontentmanagers(args.input_path, args.output_path)
         else:
             contextmanager = args.contentmanager
+            checkandextract(args, contextmanager, "contentmanager")
 
         if contextmanager is None:
             print("Error: Could not find contentmanager.")
             return
 
-        PDpath = checkandextract(args.input_path, args.output_path, 'primary.docobjects', args)
+        PDpath = checkandextract(args, 'primary.docobjects', "file")
         if PDpath is None:
             print("Error: Could not find PDpath.")
             return
 
         files = ""
 
-        if args.speed == "F":
+        if args.speed == "S":
             # Make a list of files in com.snap.file_manager_
-            files = checkforfile(args.input_path, 'com.snap.file_manager_', args)
-        elif args.speed == "S":
-            # Make a list of files in com.snap.file_manager_
-            files = checkforfile21(args.input_path, args)
+            files = checkinzip(args, 'com.snap.file_manager_', "path")
 
-        matches = check_keys(args.input_path, files, contextmanager, args.speed)
+            matches = check_keys(args, files, contextmanager)
 
     # Android mode
     elif args.mode == "AND":
@@ -154,7 +163,7 @@ def writeHtmlReport(args):
     print()
     print("Writing html reports..")
     # For every conversation
-    for x in getConv(conn, ""):
+    for x in getConv(conn, args.msg_id):
         print('\rConversation: ' + x, end='', flush=True)
         # Write html report
         with open(args.output_path + "\\" + "SnapchatKonversationer" + timea + "\\" + x + "HTML-Report.html", "w") as f:
@@ -393,15 +402,16 @@ def writeHtmlReport(args):
                     # Header for msg
                     f.write(Table_Header)
 
+                    # Content type
+                    ctype = i[13]
+
                     # Check for content type and decode
-                    if i[13] == 1:
-                        string = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", i[5].decode('utf-8', 'ignore')))
+                    proto_string = proto_to_msg(i[5])
+                    string = decode_string(proto_string, i[5])
+
+                    # if a text message was found
+                    if ctype == 1:
                         msg = msg + 1
-                    else:
-                        # Other content types can also contain text
-                        # TODO add a way to find only words in blob, words can be misspelled
-                        # decode_buf(i[5])
-                        string = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", i[5].decode('utf-8', 'ignore')))
 
                     Table_Data = """
                                 <tr>    
@@ -413,13 +423,13 @@ def writeHtmlReport(args):
     """ % (string)
                     f.write(Table_Data)
 
-                    if args.mode != "ARY":
+                    if args.speed == "S" and (args.mode == "AND" or args.mode == "IOS"):
                         for key, image, longkey in matches:
 
-                            if key in string:
+                            if key in "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", i[5].decode('utf-8', 'ignore'))):
                                 for im in image:
                                     Attatchments = Attatchments + 1
-                                    effromzip(im, args.input_path, args.output_path, args)
+                                    effromzip(im, args)
 
                                     Atta = """
                                                 <tr>

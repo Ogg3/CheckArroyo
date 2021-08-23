@@ -1,5 +1,6 @@
 """
 Version 0-5-8
+github.com/Ogg3/CheckArroyo
 """
 import tkinter
 import tkinter as tk
@@ -26,7 +27,7 @@ def main():
         def return_entry_check(en):
             content = en.get()
             if content == "":
-                messagebox.showinfo("ERROR", "ENTRY BOX IS EMPTY")
+                messagebox.showinfo("ERROR", "ENTRY BOX "+str(en)+"IS EMPTY")
             else:
                 return content
 
@@ -111,14 +112,6 @@ def main():
 
             try:
 
-                """# Set frame and title
-                main = tk.Frame(root, width=1920, height=1080, bg="white")
-                main.place(x=0, y=0)
-
-                mi = tk.Label(main, text="Thunder")
-                mi.place(relx=.37, rely=.02, anchor="c")
-                mi.config(font=("Courier", "44"))"""
-
                 # Set frame and title
                 window = tk.Frame(root, width=1920, height=1080, bg="blue")
                 window.place(x=0, y=0)
@@ -127,11 +120,11 @@ def main():
                 mi.config(font=("Courier", "44"))
 
                 # Add logo
-                #widget = tk.Label(window, compound='top')
-                #widget.p = tk.PhotoImage(file="p.png")
-                #widget['text'] = ""
-                #widget['image'] = widget.p
-                #widget.place(relx=.95, rely=.127, anchor="c")
+                widget = tk.Label(window, compound='top')
+                widget.p = tk.PhotoImage(file="p.png")
+                widget['text'] = ""
+                widget['image'] = widget.p
+                widget.place(relx=.95, rely=.127, anchor="c")
 
                 # Lable and entry box to add path
                 tk.Label(window, text="Enter path here. Ex C:\\folder\\input_file").place(relx=.4, rely=.1)
@@ -241,6 +234,16 @@ def main():
                 Select a conversation ID
                 """).place(
                     relx=.6, rely=.55)
+
+                """# Lable and entry box to add files of interest
+                tk.Label(window, text="Enter path here. Ex C:\\folder\\input_file").place(relx=.4, rely=.62)
+                filesof_int = tk.Entry(window, width=40)
+                filesof_int.place(relx=.45, rely=.65, anchor="c")
+
+                # Choose a file
+                tk.Button(window, text="Choose a file",
+                          command=lambda: ent_insert(filesof_int, filedialog.askopenfilename())
+                          ).place(relx=.55, rely=.65)"""
 
 
             except Exception as e:

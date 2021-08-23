@@ -1,34 +1,25 @@
 """
 Version 0-5-8
+github.com/Ogg3/CheckArroyo
 """
 
 from zipfile import ZipFile
-import os
 import sqlite3
 import datetime
 import re
+from parse3 import *
 
 
 class GUI_args(object):
-    """
-    0-speed,
-    1-mode,
-    2-debug,
-    3-time_start,
-    4-time_stop,
-    5-contentmanager,
-    6-msg_id
-
-    """
-    input_path=""
-    output_path=""
-    speed=""
-    mode=""
-    time_start=""
-    time_stop=""
-    contentmanager=""
-    msg_id=""
-    debug_mode=False
+    input_path = ""
+    output_path = ""
+    speed = ""
+    mode = ""
+    time_start = ""
+    time_stop = ""
+    contentmanager = ""
+    msg_id = ""
+    debug_mode = False
 
     def __init__(self, input_path, output_path, speed, mode, time_start, time_stop, contentmanager, msg_id, debug_mode):
         self.input_path = input_path
@@ -42,16 +33,74 @@ class GUI_args(object):
         self.debug_mode = debug_mode
 
 
-"""
-GUI
-3-time_start, 
-4-time_stop,
+# Decode string
+def decode_string(proto_string, bin_string):
 
+    string = ""
+
+    # Check if any string messages where found
+    if proto_string is not None:
+
+        # Check if multiple strings where found
+        if type(proto_string) is list:
+
+            for i in proto_string:
+
+                # Encode because reasons
+                tmp = i.encode('utf-8', 'ignore')
+
+                string = string + "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ :()=?&$%#]+", tmp.decode('utf-8', 'ignore')))
+    else:
+        string = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore')))
+
+    # Check so string is not empty
+    if string == "":
+        string = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore')))
+
+    return string
+
+
+# return a dict of a nested dict
+def find_string_in_dict(data):
+    for k, v in data.items():
+        if isinstance(v, dict):
+            yield k, v
+            yield from find_string_in_dict(v)
+        else:
+            yield k, v
+
+
+# Turn a raw protobuf file to find a msg string
+def proto_to_msg(bin_file):
+    messages_found = []
+    messages = ParseProto(bin_file)
+
+    res = find_string_in_dict(messages)
+    for k, v in res:
+        if "string" in k:
+            messages_found.append(v)
+
+    return messages_found
+
+
+# Turn raw protobuf file and find key
+def proto_to_key(bin_file):
+    messages = ParseProto(bin_file)
+
+    res = find_string_in_dict(messages)
+    for k, v in res:
+        if "string" in k:
+            return v
+
+
+"""
 If both values are None then no time has been set so all times are valid
 """
-def check_time(msg, args, GUI_check):
 
-    if GUI_check:
+
+def check_time(msg, args, gui_check):
+    # Check if GUI is being used or not
+    if gui_check:
         if args.time_start != "" and args.time_stop != "":
             # Check if message was created within a range of dates
             return inRange(args.time_start, args.time_stop, msg)
@@ -68,8 +117,9 @@ def check_time(msg, args, GUI_check):
 """
 Check blobs for usernames in primary.docobjects
 """
-def check_id_username(userid, pdpath):
 
+
+def check_id_username(userid, pdpath):
     check = checkPD(userid, pdpath)
     if check != "":
         return check
@@ -81,6 +131,8 @@ def check_id_username(userid, pdpath):
 Used for CLI mode
 Displays contentmanagers and returns a content manager based on user input
 """
+
+
 def displayIOScontentmanagers(input_path, ouput_path):
     managers = []
 
@@ -114,10 +166,13 @@ def displayIOScontentmanagers(input_path, ouput_path):
 
         return managers[int(ret) - 1]
 
+
 """
 Used for GUI mode
 Displays contentmanagers and returns a content manager based on user input
 """
+
+
 def displayIOScontentmanagers_GUI(input_path):
     managers = []
 
@@ -135,14 +190,15 @@ def displayIOScontentmanagers_GUI(input_path):
 
         return managers
 
+
 # Searches for a file with name and extracts them
-def checkandextract(input_path, output_path, string, args):
-    check = checkforfile(input_path, string, args)
+def checkandextract(args, string, mode):
+    check = checkinzip(args, string, mode)
     if check is None:
         return None
     else:
-        effromzip(check[0], input_path, output_path, args)
-        return os.path.abspath(output_path + '/' + check[0])
+        effromzip(check[0], args)
+        return os.path.abspath(args.output_path + '/' + check[0])
 
 
 # Checks primary.docobjects for a hits on a id and returns the username
@@ -202,7 +258,7 @@ def inRange(start, stop, time_check):
 
 
 # Checks zipfile from files with the name string and returns a list with paths to those files
-def checkforfile21(path, debug_mode):
+def checkforfile21(path):
     path = os.path.abspath(path)
 
     data = []
@@ -212,7 +268,7 @@ def checkforfile21(path, debug_mode):
 
             a = i.split('/')
 
-            if len(a[len(a) - 1]) >= 21 and i[len(i)-1] != "/":
+            if len(a[len(a) - 1]) >= 21 and i[len(i) - 1] != "/":
                 data.append(i)
         f.close()
 
@@ -222,17 +278,26 @@ def checkforfile21(path, debug_mode):
         return data
 
 
-# Checks zipfile from files with the name string and returns a list with paths to those files
-def checkforfile(path, string, debug_mode):
-    path = os.path.abspath(path)
+# Extract contentmanager
+def checkinzip(args, string, mode):
+    path = os.path.abspath(args.input_path)
 
     data = []
 
     with ZipFile(path, "r") as f:
         for i in f.namelist():
-
-            if string in i and i[len(i)-1] != "/":
-                data.append(i)
+            if mode == "path":
+                if string in i and i[len(i) - 1] != "/":
+                    data.append(i)
+            elif mode == "file":
+                new = i.split("/")
+                if string == new[len(new) - 1] and i[len(i) - 1] != "/":
+                    data.append(i)
+            elif mode == "contentmanager":
+                new = i.split("/")
+                if string in i and i[len(i) - 1] != "/":
+                    if new[len(new)-1] == "contentManagerDb.db":
+                        data.append(i)
         f.close()
 
     if data == []:
@@ -272,35 +337,8 @@ def convTime(tim):
     return datetime.datetime.utcfromtimestamp(int(tim[:10]))
 
 
-# Looks through binary blob to find header
-def getAttatchment(bina, index, headlngth):
-    head = ""
-
-    # Set check
-    x = 0
-    y = 0
-    lgt = len(bina)
-    check = False
-
-    # Go through blob
-    for i in range(lgt):
-
-        # At index of header print data
-        if x == index + headlngth or check == True:
-            check = True
-            head = head + chr(bina[x])
-            if y == 20:
-                break
-
-            y = y + 1
-        x = x + 1
-
-    return head
-
-
 # Gets a list of conversations ids
 def getConv(conn, msg_id):
-
     if msg_id != "":
         qr = "SELECT client_conversation_id FROM 'conversation_message' WHERE client_conversation_id == '%s'" % msg_id
 
@@ -335,9 +373,9 @@ def readzip(zip):
 
 
 # Extract file from zip to path
-def effromzip(file, zip, path, debug_mode):
-    path = os.path.abspath(path)
-    with ZipFile(zip, 'r') as f:
+def effromzip(file, args):
+    path = os.path.abspath(args.output_path)
+    with ZipFile(args.input_path, 'r') as f:
         f.extract(file, path)
 
     f.close()
@@ -354,19 +392,26 @@ def readfromzip(zip, file):
 3 - pics and videos
 4 - voice messages
 """
-def check_keys(inp, files, con, speed):
+
+
+def check_keys(args, files, con):
     match = []
 
-    conn = sqlite3.connect(con)
+    try:
+        conn = sqlite3.connect(args.output_path+"/"+con)
+    except Exception as e:
+        print("Could not connect to: "+str(args.output_path+"/"+con))
+        print(e)
+        return
 
     # Diffrent querys gives different speed
-    if speed == "F":
+    if args.speed == "F":
         curs = conn.execute(
             "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '3-%' OR KEY LIKE '4-%'")
-    elif speed == "M":
+    elif args.speed == "M":
         curs = conn.execute(
             "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '3-%' OR KEY LIKE '4-%' OR KEY LIKE '10-%' OR KEY LIKE '16-%'")
-    elif speed == "S":
+    elif args.speed == "S":
         curs = conn.execute("SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE")
 
     files_checked = 0
@@ -383,44 +428,47 @@ def check_keys(inp, files, con, speed):
             # Check if the name of the file match what is stored in CONTENT_DEFENITION
             if image.split('/')[len(image.split('/')) - 1] in condef:
                 if '3-content~' in res[1]:
-                    match.append((res[1].split('3-content~')[1][:21], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('3-content~')[1][:21], checkinzip(args, image, "path"), res[1]))
                 elif '3-thumbnail~' in res[1]:
-                    match.append((res[1].split('3-thumbnail~')[1][:21], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('3-thumbnail~')[1][:21], checkinzip(args, image, "path"), res[1]))
                 elif '10-deeplink_icon~' in res[1]:
-                    match.append((res[1].split('10-deeplink_icon~')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('10-deeplink_icon~')[1], checkinzip(args, image, "path"), res[1]))
                 elif '10-topvideo_firstframe~' in res[1]:
-                    match.append((res[1].split('10-topvideo_firstframe~')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('10-topvideo_firstframe~')[1], checkinzip(args, image, "path"), res[1]))
                 elif '10-lfv_firstframe~' in res[1]:
-                    match.append((res[1].split('10-lfv_firstframe~')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('10-lfv_firstframe~')[1], checkinzip(args, image, "path"), res[1]))
                 elif '10-topimage~' in res[1]:
-                    match.append((res[1].split('10-topimage~')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('10-topimage~')[1], checkinzip(args, image, "path"), res[1]))
                 elif '10-topvideo~' in res[1]:
-                    match.append((res[1].split('10-topvideo~')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('10-topvideo~')[1], checkinzip(args, image, "path"), res[1]))
                 elif '13-' in res[1]:
-                    match.append((res[1].split('13-')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('13-')[1], checkinzip(args, image, "path"), res[1]))
                 elif '16-' in res[1]:
-                    match.append((res[1].split('16-')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('16-')[1], checkinzip(args, image, "path"), res[1]))
                 elif '16-overlay~' in res[1]:
-                    match.append((res[1].split('16-')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('16-')[1], checkinzip(args, image, "path"), res[1]))
                 elif '16-video~' in res[1]:
-                    match.append((res[1].split('16-video~')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('16-video~')[1], checkinzip(args, image, "path"), res[1]))
                 elif '3-' in res[1]:
-                    match.append((res[1].split('3-')[1][:21], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('3-')[1][:21], checkinzip(args, image, "path"), res[1]))
                 elif '4-' in res[1]:
-                    match.append((res[1].split('4-')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('4-')[1], checkinzip(args, image, "path"), res[1]))
                 elif '4-overlay~' in res[1]:
-                    match.append((res[1].split('4-overlay~')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('4-overlay~')[1], checkinzip(args, image, "path"), res[1]))
                 elif '4-video~' in res[1]:
-                    match.append((res[1].split('4-video~')[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1].split('4-video~')[1], checkinzip(args, image, "path"), res[1]))
                 elif image.split('/')[len(image.split('/')) - 1] in condef and image.split('/')[
                     len(image.split('/')) - 1] in res[1]:
-                    match.append((res[1], checkforfile(inp, image, speed), res[1]))
+                    match.append((res[1], checkinzip(args, image, "path"), res[1]))
 
     return match
 
+
 """
 
 """
+
+
 def check_participants(convID, conn, PDpath):
     part = []
 
