@@ -37,14 +37,14 @@ I recomend using something like AXIOM to parse the conversation if you just want
 # Databases of interest
 
 ## iPhone
-arroyo - messages
-contentmanagerDb.db - linking files to conversations
-primary.docobjects - linking usernames to IDs
+arroyo - messages\
+contentmanagerDb.db - linking files to conversations\
+primary.docobjects - linking usernames to IDs\
 cachecontroller - linking files to users
 
 ## Android
-media_packages - metadata of pictures and videos
-arroyo - messages
+media_packages - metadata of pictures and videos\
+arroyo - messages\
 
 # How it works
 
