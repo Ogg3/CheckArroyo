@@ -44,12 +44,12 @@ cachecontroller - linking files to users
 
 ## Android
 media_packages - metadata of pictures and videos\
-arroyo - messages\
+arroyo - messages
 
 # How it works
 
 ## Arroyo.db
-Arroyo is where conversations are stored. For every message there is a message_type where 1 is a regular text message. If it is not a text message there is a chance a key is stored in the message_content blob. The blob can be decoded as a raw protocol buffer, as of now I haven't found a good way to decode it with python. The key is 21 in length.
+Arroyo is where conversations are stored. For every message there is a message_type where 1 is a regular text message. If it is not a text message there is a chance a key is stored in the message_content blob. The blob can be decoded as a raw protocol buffer. With the help of parser3.py from ALEAP the blob can be decoded. The key is 21 in length.
 
 ## Contentmanagerdb.db
 
