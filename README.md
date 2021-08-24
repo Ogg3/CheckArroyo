@@ -32,29 +32,6 @@ Optional filters\
 
 # Tips
 
-I recomend using something like AXIOM to parse the conversation if you just want text messages, its much easier to read than in my HTML reports.
+I recomend using something like AXIOM to parse the conversation if you just want text messages, its much easier to read than in my HTML reports.\
 
-# Databases of interest
-
-## iPhone
-arroyo - messages\
-contentmanagerDb.db - linking files to conversations\
-primary.docobjects - linking usernames to IDs\
-cachecontroller - linking files to users
-
-## Android
-media_packages - metadata of pictures and videos\
-arroyo - messages
-
-# How it works
-
-## Arroyo.db
-Arroyo is where conversations are stored. For every message there is a message_type where 1 is a regular text message. If it is not a text message there is a chance a key is stored in the message_content blob. The blob can be decoded as a raw protocol buffer. With the help of parser3.py from ALEAP the blob can be decoded. The key is 21 in length.
-
-## Contentmanagerdb.db
-
-This is where files are linked to a message. Sometimes there is just one key for one file, however with snaps there are multiple sub keys which is linked to for exapmle the layer file, the media content, a thumbnail file.
-
-## primary.docobjects
-
-Here usernames can be linked to snapchat IDs, it can also show the participants of a conversation.
+Check out the wiki for more info :)
