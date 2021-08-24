@@ -1,5 +1,5 @@
 """
-Version 0-5-8
+v0-6-0-beta
 github.com/Ogg3/CheckArroyo
 """
 
