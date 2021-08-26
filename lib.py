@@ -1,5 +1,5 @@
 """
-v0-6-0-beta
+Version 0-5-8
 github.com/Ogg3/CheckArroyo
 """
 
@@ -36,7 +36,7 @@ class GUI_args(object):
 # Decode string
 def decode_string(proto_string, bin_string):
 
-    string = ""
+    strings = []
 
     # Check if any string messages where found
     if proto_string is not None:
@@ -49,15 +49,15 @@ def decode_string(proto_string, bin_string):
                 # Encode because reasons
                 tmp = i.encode('utf-8', 'ignore')
 
-                string = string + "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ :()=?&$%#]+", tmp.decode('utf-8', 'ignore')))
+                strings.append("".join(re.findall("[a-zA-Z0-9äöåÄÖÅ -:()=?&$%#\/]+", tmp.decode('utf-8', 'ignore'))))
     else:
-        string = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore')))
+        strings.append("".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore'))))
 
     # Check so string is not empty
-    if string == "":
-        string = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore')))
+    if not strings:
+        strings.append("".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore'))))
 
-    return string
+    return strings
 
 
 # return a dict of a nested dict
@@ -339,12 +339,17 @@ def convTime(tim):
 
 # Gets a list of conversations ids
 def getConv(conn, msg_id):
-    if msg_id != "":
+
+    # if msg_id is empty get all convos
+    if msg_id == "":
+        curs = conn.execute("SELECT client_conversation_id FROM 'conversation_message'")
+    elif msg_id is None:
+        curs = conn.execute("SELECT client_conversation_id FROM 'conversation_message'")
+    else:
         qr = "SELECT client_conversation_id FROM 'conversation_message' WHERE client_conversation_id == '%s'" % msg_id
 
         curs = conn.execute(qr)
-    else:
-        curs = conn.execute("SELECT client_conversation_id FROM 'conversation_message'")
+
 
     conv = []
 
@@ -387,13 +392,57 @@ def readfromzip(zip, file):
         return f.read(file)
 
 
+# Check keys with proto strings
+def check_keys_proto(args, files, con, proto_string):
+
+    match = []
+
+    try:
+        conn = sqlite3.connect(args.output_path + "/" + con)
+    except Exception as e:
+        print("Could not connect to: " + str(args.output_path + "/" + con))
+        print(e)
+        return
+
+    # Can be more then one key
+    for i in proto_string:
+
+        # Check length of key
+        if len(i) > 15:
+            qr = "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '%"+i+"%'"
+            curs = conn.execute(qr)
+
+            # Loop through query
+            for ii in curs:
+                # Check if query is empty
+                if i is ():
+                    return False
+                #print('INFO - Found key in contentmanager: '+i)
+                # For all files
+                for iii in files:
+
+                    # Get only the file name
+                    filename = iii.split('/')[len(iii.split('/')) - 1]
+
+                    # Decode the blob
+                    dblob = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ -]+", ii[0].decode('utf-8', 'ignore')))
+
+                    # If a filename can be found in the blob add it in a tuple to matching list
+                    if filename in dblob:
+                        #print('INFO - Found link with key and file')
+                        match.append((i, iii))
+
+                    # Check if file is a key
+                    if i in filename:
+                        print("RARE - Found a key that is a file: "+str(i))
+    return match
+
+
 # Checks content managers for keys and stores them for later use
 """
 3 - pics and videos
 4 - voice messages
 """
-
-
 def check_keys(args, files, con):
     match = []
 

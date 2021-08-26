@@ -1,10 +1,11 @@
 """
-v0-6-0-beta
+Version 0-5-8
 github.com/Ogg3/CheckArroyo
 """
 import time
 import argparse
 from lib import *
+
 
 # Main
 def main():
@@ -19,7 +20,8 @@ def main():
                         help='Select speed, F - fast, M - medium, S - slow')
     parser.add_argument('-t1', '--time_start', required=False, action="store", help='Time range start. Ex: 2021-01-01')
     parser.add_argument('-t2', '--time_stop', required=False, action="store", help='Time range stop. Ex: 2021-01-01')
-    parser.add_argument('-msg', '--msg_id', required=False, action="store", help='Make report for only one conversation id')
+    parser.add_argument('-msg', '--msg_id', required=False, action="store",
+                        help='Make report for only one conversation id')
     parser.add_argument('-d', '--debug_mode', required=False, action="store_true", help='For my sanity')
 
     args = parser.parse_args()
@@ -97,27 +99,31 @@ def main():
 5-contentmanager, 
 6-msg_id
 """
+
+
 # Write report on findings
 def writeHtmlReport(args):
-
     start_time = time.time()
 
-    GUI_check=False
+    GUI_check = False
     # Check if CLI or GUI
     try:
         a = args[0]
         GUI_check = True
-        # input_path output_path),speed.get(),mode.get(),time_start),time_stop),contentmanager),msg_id),False])
+        # input_path output_path),speed.get(),mode.get(),time_start),time_stop), contentmanager),msg_id),False])
         args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
+        print("INFO - Using GUI")
     except:
+        print("INFO - Using CLI")
         pass
 
-
     if args.mode == "IOS":
+        print("INFO - Using IOS mode")
+
         # Extract needed content
         arroyo = checkandextract(args, 'arroyo.db', "file")
         if arroyo is None:
-            print("Error: Could not find arroyo.")
+            print("ERROR - Could not find arroyo.")
             return
 
         if not GUI_check:
@@ -127,13 +133,17 @@ def writeHtmlReport(args):
             checkandextract(args, contextmanager, "contentmanager")
 
         if contextmanager is None:
-            print("Error: Could not find contentmanager.")
+            print("ERROR - Could not find contentmanager.")
             return
+
+        print("INFO - Using " + contextmanager + " as contentmanager")
 
         PDpath = checkandextract(args, 'primary.docobjects', "file")
         if PDpath is None:
-            print("Error: Could not find PDpath.")
+            print("ERROR - Could not find PDpath.")
             return
+
+        print("INFO - Using " + PDpath + " as primary.docobjects")
 
         files = ""
 
@@ -141,7 +151,7 @@ def writeHtmlReport(args):
             # Make a list of files in com.snap.file_manager_
             files = checkinzip(args, 'com.snap.file_manager_', "path")
 
-            matches = check_keys(args, files, contextmanager)
+            #matches = check_keys(args, files, contextmanager)
 
     # Android mode
     elif args.mode == "AND":
@@ -149,24 +159,41 @@ def writeHtmlReport(args):
 
     # Only arroyo mode
     elif args.mode == "ARY":
+        print("INFO - User is using arroyo.db mode")
         arroyo = args.input_path
 
     # Create timestamp for when report was created
     timea = str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
 
+    print("INFO - Connecting to "+arroyo)
+
     conn = sqlite3.connect(arroyo)
 
-    os.mkdir(args.output_path + "\\" + "SnapchatKonversationer" + timea)
+    # Make base directory
+    os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + timea)
+
+    # Make conversation directory
+    os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + timea+ "\\" + "conversation-reports")
 
     msg = 0
     Attatchments = 0
     print()
-    print("Writing html reports..")
+    print("INFO - Writing html reports")
+
+    convons = getConv(conn, args.msg_id)
+
+    if GUI_check and args.msg_id != "":
+        print("INFO - Filtering for " + args.msg_id)
+    elif not GUI_check and args.msg_id is not None:
+        print("INFO - Filtering for " + args.msg_id)
+
+    print("INFO - Found conversations " + str(convons))
+
     # For every conversation
-    for x in getConv(conn, args.msg_id):
-        print('\rConversation: ' + x, end='', flush=True)
+    for x in convons:
+        print('\rINFO - writing conversation: ' + x, end='', flush=True)
         # Write html report
-        with open(args.output_path + "\\" + "SnapchatKonversationer" + timea + "\\" + x + "HTML-Report.html", "w") as f:
+        with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "conversation-reports" + "\\" + x + "-HTML-Report.html", "w") as f:
 
             JavascriptFunc = """
             <script>
@@ -407,29 +434,42 @@ def writeHtmlReport(args):
 
                     # Check for content type and decode
                     proto_string = proto_to_msg(i[5])
-                    string = decode_string(proto_string, i[5])
+                    string_list = decode_string(proto_string, i[5])
 
                     # if a text message was found
                     if ctype == 1:
                         msg = msg + 1
+                    else:
+                        attachments = check_keys_proto(args, files, contextmanager, proto_string)
 
-                    Table_Data = """
-                                <tr>    
-                                    <td> %s </td>
-                                </tr>
+                    for string in string_list:
+                        Table_Data = """
+                                    <tr>    
+                                        <td> %s </td>
+        """ % (string)
+                        f.write(Table_Data)
+                    Table_end = """
+                                    </tr>
                             </tbody>
-                            <tbody class="">
-    
-    """ % (string)
-                    f.write(Table_Data)
+                                <tbody class="">
+                    """
+                    f.write(Table_end)
 
+                    # Check flags
                     if args.speed == "S" and (args.mode == "AND" or args.mode == "IOS"):
-                        for key, image, longkey in matches:
 
-                            if key in "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", i[5].decode('utf-8', 'ignore'))):
-                                for im in image:
-                                    Attatchments = Attatchments + 1
-                                    effromzip(im, args)
+                        # Check content type
+                        if ctype != 1:
+
+                            # Check if attachments link was found
+                            if attachments:
+                                Attatchments = Attatchments + 1
+
+                                # Write attachments and key to html report and link to the extracted file
+                                # TODO check magic bytes for file type
+                                for key, image in attachments:
+
+                                    effromzip(image, args)
 
                                     Atta = """
                                                 <tr>
@@ -442,13 +482,10 @@ def writeHtmlReport(args):
                                     Atta_Data = """
         
                                                 <tr>
-                                                    <td> <img src="../%s" style="max-height:400; max-width:600; align:left;" alt=""></img></td>
+                                                    <td> <img src="../../%s" style="max-height:400; max-width:600; align:left;" alt=""></img></td>
                                                 </tr>
                                                 <tr>
-                                                    <td> <video src="../%s" style="max-height:400; max-width:600; align:left;" alt controls></video> </td>
-                                                </tr>
-                                                <tr>
-                                                    <td> %s </td>
+                                                    <td> <video src="../../%s" style="max-height:400; max-width:600; align:left;" alt controls></video> </td>
                                                 </tr>
                                                 <tr>
                                                     <td> %s </td>
@@ -456,8 +493,7 @@ def writeHtmlReport(args):
                                                 <tr>
                                                     <td> %s </td>
                                                 </tr>
-        
-            """ % (im, im, im, key, longkey)
+            """ % (image, image, image, key)
                                     f.write(Atta_Data)
 
             End = """
@@ -487,30 +523,48 @@ def writeHtmlReport(args):
 """
             f.write(End)
 
-    with open(args.output_path + "\\" + "SnapchatKonversationer" + timea + "\\" + "stats.html", "w") as d:
+    with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "Report.html", "w") as a:
+
+        for x in convons:
+            link = "./conversation-reports" + timea + "\\" + x + "-HTML-Report.html"
+            name = x + "-HTML-Report.html"
+            home = """
+                <div id="stats"> 
+                    <table class="column-stats" >
+                        <tr>
+                            <th> <a href="%s"> %s </a></th>
+                        </tr>
+                    </table>
+    
+                </div>
+                    """ % (link, name)
+            a.write(home)
+
         Stats = """
-            <div id="stats"> 
-                <table class="column-stats" >
-                    <tr>
-                        <th><b> Stats </b> </th>
-                    </tr>
-                    <tr>
-                        <td>Messages decoded: %s</td>
-                    </tr>
-                    <tr>
-                        <td>Attachments found: %s</td>
-                    </tr>
-                    <tr>
-                        <td>Run time (s): %s</td> 
-                    </tr>
-                </table>
+                <div id="stats"> 
+                    <table class="column-stats" >
+                        <tr>
+                            <th><b> Stats </b> </th>
+                        </tr>
+                        <tr>
+                            <td>Messages decoded: %s</td>
+                        </tr>
+                        <tr>
+                            <td>Attachments found: %s</td>
+                        </tr>
+                        <tr>
+                            <td>Run time (s): %s</td> 
+                        </tr>
+                    </table>
 
-            </div>
-                """ % (msg, Attatchments, (time.time() - start_time))
-        d.write(Stats)
+                </div>
+                        """ % (msg, Attatchments, (time.time() - start_time))
+        a.write(Stats)
 
+    print()
     print("Done...")
     print((time.time() - start_time))
+
 
 # So weird
 if __name__ == '__main__':
