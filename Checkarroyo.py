@@ -1,5 +1,4 @@
 """
-Version 0-5-8
 github.com/Ogg3/CheckArroyo
 """
 import time
@@ -526,7 +525,7 @@ def writeHtmlReport(args):
     with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "Report.html", "w") as a:
 
         for x in convons:
-            link = "./conversation-reports" + timea + "\\" + x + "-HTML-Report.html"
+            link = "./conversation-reports" + "\\" + x + "-HTML-Report.html"
             name = x + "-HTML-Report.html"
             home = """
                 <div id="stats"> 
