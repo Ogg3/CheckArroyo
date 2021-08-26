@@ -1,5 +1,4 @@
 """
-v0-6-0-beta
 github.com/Ogg3/CheckArroyo
 """
 import tkinter
