@@ -1,40 +1,215 @@
 """
+Version 0-5-8
 github.com/Ogg3/CheckArroyo
 """
 
-from zipfile import ZipFile
-import sqlite3
 import datetime
+import sqlite3
+import tkinter as tk
 import re
+from tkinter import *
+from tkinter import messagebox
+from zipfile import ZipFile
+import traceback
+
 from parse3 import *
 
 
 class GUI_args(object):
-    input_path = ""
-    output_path = ""
-    speed = ""
-    mode = ""
-    time_start = ""
-    time_stop = ""
-    contentmanager = ""
-    msg_id = ""
-    debug_mode = False
+    input_path = None
+    output_path = None
+    speed = None
+    mode = None
+    time_start = None
+    time_stop = None
+    # contentmanager = None
+    msg_id = None
+    display_window = None
 
-    def __init__(self, input_path, output_path, speed, mode, time_start, time_stop, contentmanager, msg_id, debug_mode):
+    def __init__(self, input_path, output_path, speed, mode, time_start, time_stop, msg_id,
+                 display_window):
         self.input_path = input_path
         self.output_path = output_path
         self.speed = speed
         self.mode = mode
         self.time_start = time_start
         self.time_stop = time_stop
-        self.contentmanager = contentmanager
+        # self.contentmanager = contentmanager
         self.msg_id = msg_id
-        self.debug_mode = debug_mode
+        self.display_window = display_window
+
+
+# Return known types of content types
+def check_ctype(int_ctype):
+
+    # 1 is text message
+    if int_ctype == 1:
+        return "Text message"
+    # 0 is snap
+    elif int_ctype == 0:
+        return "Snap"
+    # 2 is media
+    elif int_ctype == 2:
+        return "Media"
+    # 4 is audio messages
+    elif int_ctype == 4:
+        return "Audio message"
+    else:
+        return "Content type " + str(int_ctype)
+
+
+# GUI Section
+# Insert a value in an entry box and del the existing text
+def ent_insert(ent, var):
+    ent.delete(0, 'end')
+    ent.insert(0, var)
+
+
+# Retrun the value from an entry widget and check if widget is empty
+def return_entry_check(en):
+
+    content = en.get()
+    if content == "":
+        messagebox.showinfo("ERROR", "ENTRY BOX " + str(en) + "IS EMPTY")
+    else:
+        return content
+
+
+# Retrun the value from an entry widget without checking if widget is empty
+def return_entry(en):
+    return en.get()
+
+
+# Write a list to a text widget
+def write_to_tex(lista, tex):
+    try:
+        tex.config(state=tk.NORMAL)
+
+        def write_to(strin, tex):
+            s = strin + "\n"
+            tex.insert(tk.END, s)
+            tex.see(tk.END)
+
+        for i in range(len(lista)):
+            write_to(str(lista[i]), tex)
+            tex.insert(tk.END, "\n")
+
+        tex.config(state=tk.DISABLED)
+    except Exception as e:
+        messagebox.showinfo("ERROR", traceback.format_exc() + "\n" + e.__doc__)
+
+
+# Write a string to a text widget
+def write_string_tex(strin, tex):
+    tex.config(state=tk.NORMAL)
+
+    s = str(strin) + "\n"
+    tex.insert(tk.END, s)
+    tex.see(tk.END)
+
+    tex.config(state=tk.DISABLED)
+
+
+# Write a strin to a rapport window
+def write_rapport_tex(lista, tex):
+    try:
+        def write_to(strin, tex):
+            s = strin + "\n"
+            tex.insert(tk.END, s)
+            tex.see(tk.END)
+
+        for i in range(len(lista)):
+            write_to(str(lista[i]), tex)
+        tex.insert(tk.END, "]" + "\n")
+        tex.see(tk.END)
+    except Exception as e:
+        messagebox.showinfo("ERROR", traceback.format_exc() + "\n" + e.__doc__)
+
+
+def write_rapport_image_tex(im, tex):
+    try:
+        tex.insert(tk.END, "[" + "\n")
+        tex.see(tk.END)
+
+        s = str(im)
+        tex.insert(tk.END, s)
+        tex.see(tk.END)
+
+        tex.insert(tk.END, "\n")
+        tex.see(tk.END)
+    except Exception as e:
+        messagebox.showinfo("ERROR", traceback.format_exc() + "\n" + e.__doc__)
+
+
+# Retrive the content of a text widget
+def retrieve_input(tex):
+    lista = []
+    strin = ""
+    for i in tex.get("1.0", 'end-1c'):
+        if i != "\n":
+            strin = strin + i
+        else:
+            lista.append(strin)
+            strin = ""
+    return lista
+
+
+# Check if list contains only empty strings
+def check_list_for_empty(lst):
+
+    for i in lst:
+        if i != "":
+            return False
+
+    return True
+
+
+# Check zip file for contetntmanagers and return the path of the largest one
+def check_contentmanagers(input_path, output_path):
+
+    # Get the largest content manager
+    def largets(content_managers):
+        large = ""
+
+        check = True
+
+        for i in content_managers:
+
+            # Add the first one to var
+            if check:
+                large = i
+                check = False
+
+            # Check if content managers size is larger
+            if i[1] > large[1]:
+                large = i
+
+        return large
+
+    managers = []
+
+    with ZipFile(input_path, "r") as f:
+        y = 0
+        for i in f.infolist():
+
+            if 'contentmanagerV3' in i.filename:
+                a = i.filename.split('/')
+
+                if a[len(a) - 1] == 'contentManagerDb.db':
+                    y = y + 1
+                    managers.append((i.filename, i.file_size / (1024 * 1024)))
+
+        # Check the size of content managers
+        manager = largets(managers)
+        f.extract(manager[0], output_path)
+        f.close()
+
+        # return the manager that is gonna be used and the amount of content managers found
+        return manager, y
 
 
 # Decode string
 def decode_string(proto_string, bin_string):
-
     strings = []
 
     # Check if any string messages where found
@@ -44,7 +219,6 @@ def decode_string(proto_string, bin_string):
         if type(proto_string) is list:
 
             for i in proto_string:
-
                 # Encode because reasons
                 tmp = i.encode('utf-8', 'ignore')
 
@@ -52,9 +226,9 @@ def decode_string(proto_string, bin_string):
     else:
         strings.append("".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore'))))
 
-    # Check so string is not empty
-    if not strings:
-        strings.append("".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore'))))
+    # Check if list is only empty strings
+    if check_list_for_empty(strings):
+        return ["ERROR - No strings in protobuffer or script is unable to parse message"]
 
     return strings
 
@@ -95,8 +269,6 @@ def proto_to_key(bin_file):
 """
 If both values are None then no time has been set so all times are valid
 """
-
-
 def check_time(msg, args, gui_check):
     # Check if GUI is being used or not
     if gui_check:
@@ -295,7 +467,7 @@ def checkinzip(args, string, mode):
             elif mode == "contentmanager":
                 new = i.split("/")
                 if string in i and i[len(i) - 1] != "/":
-                    if new[len(new)-1] == "contentManagerDb.db":
+                    if new[len(new) - 1] == "contentManagerDb.db":
                         data.append(i)
         f.close()
 
@@ -320,7 +492,7 @@ def readContentManager(key, path):
 
         return curs
     except:
-        print("Could not connect to: ", path)
+        print("Could not connect to: ", str(path))
 
 
 # Convert string to time object
@@ -338,7 +510,6 @@ def convTime(tim):
 
 # Gets a list of conversations ids
 def getConv(conn, msg_id):
-
     # if msg_id is empty get all convos
     if msg_id == "":
         curs = conn.execute("SELECT client_conversation_id FROM 'conversation_message'")
@@ -348,7 +519,6 @@ def getConv(conn, msg_id):
         qr = "SELECT client_conversation_id FROM 'conversation_message' WHERE client_conversation_id == '%s'" % msg_id
 
         curs = conn.execute(qr)
-
 
     conv = []
 
@@ -393,13 +563,12 @@ def readfromzip(zip, file):
 
 # Check keys with proto strings
 def check_keys_proto(args, files, con, proto_string):
-
     match = []
 
     try:
         conn = sqlite3.connect(args.output_path + "/" + con)
     except Exception as e:
-        print("Could not connect to: " + str(args.output_path + "/" + con))
+        print("Could not connect to: " + str(args.output_path + "/" + str(con)))
         print(e)
         return
 
@@ -408,15 +577,15 @@ def check_keys_proto(args, files, con, proto_string):
 
         # Check length of key
         if len(i) > 15:
-            qr = "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '%"+i+"%'"
+            qr = "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '%" + i + "%'"
             curs = conn.execute(qr)
 
             # Loop through query
             for ii in curs:
                 # Check if query is empty
-                if i is ():
+                if i == ():
                     return False
-                #print('INFO - Found key in contentmanager: '+i)
+                # print('INFO - Found key in contentmanager: '+i)
                 # For all files
                 for iii in files:
 
@@ -428,12 +597,12 @@ def check_keys_proto(args, files, con, proto_string):
 
                     # If a filename can be found in the blob add it in a tuple to matching list
                     if filename in dblob:
-                        #print('INFO - Found link with key and file')
+                        # print('INFO - Found link with key and file')
                         match.append((i, iii))
 
                     # Check if file is a key
                     if i in filename:
-                        print("RARE - Found a key that is a file: "+str(i))
+                        print("RARE - Found a key that is a file: " + str(i))
     return match
 
 
@@ -442,13 +611,15 @@ def check_keys_proto(args, files, con, proto_string):
 3 - pics and videos
 4 - voice messages
 """
+
+
 def check_keys(args, files, con):
     match = []
 
     try:
-        conn = sqlite3.connect(args.output_path+"/"+con)
+        conn = sqlite3.connect(args.output_path + "/" + con)
     except Exception as e:
-        print("Could not connect to: "+str(args.output_path+"/"+con))
+        print("Could not connect to: " + str(args.output_path + "/" + con))
         print(e)
         return
 

@@ -1,8 +1,10 @@
 """
+Version 0-5-8
 github.com/Ogg3/CheckArroyo
 """
-import time
 import argparse
+import time
+
 from lib import *
 
 
@@ -103,39 +105,53 @@ def main():
 # Write report on findings
 def writeHtmlReport(args):
     start_time = time.time()
-
+    #args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
     GUI_check = False
     # Check if CLI or GUI
     try:
         a = args[0]
         GUI_check = True
-        # input_path output_path),speed.get(),mode.get(),time_start),time_stop), contentmanager),msg_id),False])
-        args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
+        # writeHtmlReport([return_entry_check(input_path),
+        #                                                               return_entry_check(output_path),
+        #                                                               speed.get(),
+        #                                                               mode.get(),
+        #                                                               return_entry(time_start),
+        #                                                               return_entry(time_stop),
+        #                                                               return_entry(msg_id),
+        #                                                               display_window])
+        args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
         print("INFO - Using GUI")
+        write_to_tex(["INFO - Using GUI"], args.display_window)
     except:
         print("INFO - Using CLI")
         pass
 
     if args.mode == "IOS":
+        write_to_tex(["INFO - Using IOS mode"], args.display_window)
         print("INFO - Using IOS mode")
 
         # Extract needed content
         arroyo = checkandextract(args, 'arroyo.db', "file")
         if arroyo is None:
+            write_to_tex(["ERROR - Could not find arroyo."], args.display_window)
             print("ERROR - Could not find arroyo.")
             return
 
         if not GUI_check:
             contextmanager = displayIOScontentmanagers(args.input_path, args.output_path)
+            print("INFO - Using auto contentmanager mode")
         else:
-            contextmanager = args.contentmanager
-            checkandextract(args, contextmanager, "contentmanager")
+            write_to_tex(["INFO - Using auto contentmanager mode"], args.display_window)
+            contextmanager, nrofcontextmanagers = check_contentmanagers(args.input_path, args.output_path)
 
         if contextmanager is None:
             print("ERROR - Could not find contentmanager.")
             return
+        print("INFO - Found " + str(nrofcontextmanagers) + " contentmanagers.")
+        print("INFO - Using " + str(contextmanager) + ".")
+        write_to_tex(["INFO - Found " + str(nrofcontextmanagers) + " contentmanagers."], args.display_window)
+        write_to_tex(["INFO - Using " + str(contextmanager) + "."], args.display_window)
 
-        print("INFO - Using " + contextmanager + " as contentmanager")
 
         PDpath = checkandextract(args, 'primary.docobjects', "file")
         if PDpath is None:
@@ -143,14 +159,18 @@ def writeHtmlReport(args):
             return
 
         print("INFO - Using " + PDpath + " as primary.docobjects")
+        write_to_tex(["INFO - Using " + PDpath + " as primary.docobjects"], args.display_window)
 
         files = ""
 
         if args.speed == "S":
             # Make a list of files in com.snap.file_manager_
             files = checkinzip(args, 'com.snap.file_manager_', "path")
-
-            #matches = check_keys(args, files, contextmanager)
+            print("INFO - Checking for attachments")
+            write_to_tex(["INFO - Checking for attachments"], args.display_window)
+        else:
+            print("INFO - NOT checking for attachments")
+            write_to_tex(["INFO - NOT checking for attachments"], args.display_window)
 
     # Android mode
     elif args.mode == "AND":
@@ -159,12 +179,14 @@ def writeHtmlReport(args):
     # Only arroyo mode
     elif args.mode == "ARY":
         print("INFO - User is using arroyo.db mode")
+        write_to_tex(["INFO - User is using arroyo.db mode"], args.display_window)
         arroyo = args.input_path
 
     # Create timestamp for when report was created
     timea = str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
 
-    print("INFO - Connecting to "+arroyo)
+    print("INFO - Connecting to " + arroyo)
+    write_to_tex(["INFO - Connecting to " + arroyo], args.display_window)
 
     conn = sqlite3.connect(arroyo)
 
@@ -172,27 +194,35 @@ def writeHtmlReport(args):
     os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + timea)
 
     # Make conversation directory
-    os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + timea+ "\\" + "conversation-reports")
+    os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "conversation-reports")
 
     msg = 0
     Attatchments = 0
-    print()
-    print("INFO - Writing html reports")
-
+    
     convons = getConv(conn, args.msg_id)
 
     if GUI_check and args.msg_id != "":
         print("INFO - Filtering for " + args.msg_id)
+        write_to_tex(["INFO - Filtering for " + args.msg_id], args.display_window)
     elif not GUI_check and args.msg_id is not None:
         print("INFO - Filtering for " + args.msg_id)
+        write_to_tex(["INFO - Filtering for " + args.msg_id], args.display_window)
 
     print("INFO - Found conversations " + str(convons))
+    write_to_tex(["INFO - Found conversations " + str(convons)], args.display_window)
+
+
+    print("INFO - Writing html reports")
+    write_to_tex(["INFO - Writing html reports"], args.display_window)
 
     # For every conversation
     for x in convons:
-        print('\rINFO - writing conversation: ' + x, end='', flush=True)
+        print('INFO - writing conversation: ' + x)
+        write_to_tex(['\rINFO - writing conversation: ' + x], args.display_window)
         # Write html report
-        with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "conversation-reports" + "\\" + x + "-HTML-Report.html", "w") as f:
+        with open(
+                args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "conversation-reports" + "\\" + x + "-HTML-Report.html",
+                "w") as f:
 
             JavascriptFunc = """
             <script>
@@ -400,36 +430,25 @@ def writeHtmlReport(args):
                         else:
                             id = i[16]
 
+                    # Content type
+                    ctype = i[13]
+                    ctype_string = check_ctype(i[13])
+
                     Table_Header = """
                             <tbody>
                                 <tr>
                                     <tr>
-                                        <th class="color1"><b>Msg ID: %s </b></th>
+                                        <th class="color1"><b> %s </b> Created: %s UTC +0 Read: %s UTC +0</th>
                                     </tr>
                                     <tr>
-                                        <th> Created: %s UTC +0</th>
-                                    </tr>
-                                    <tr>
-                                        <th> Read: %s UTC +0</th>
-                                    </tr>
-                                    <tr>
-                                        <th> Is saved: %s </th>
-                                    </tr>
-                                    <tr>
-                                        <th> Sender id: %s </th>
-                                    </tr>
-                                    <tr>
-                                        <th class="color2"> Content type: %s </th>
+                                        <th class="color2"> %s </th>
                                     </tr>
                                 </tr> 
     
-    """ % (i[1], convTime(i[7]), convTime(i[8]), i[10], id, i[13])
+    """ % (id[0], convTime(i[7]), convTime(i[8]), ctype_string)
 
                     # Header for msg
                     f.write(Table_Header)
-
-                    # Content type
-                    ctype = i[13]
 
                     # Check for content type and decode
                     proto_string = proto_to_msg(i[5])
@@ -439,7 +458,7 @@ def writeHtmlReport(args):
                     if ctype == 1:
                         msg = msg + 1
                     else:
-                        attachments = check_keys_proto(args, files, contextmanager, proto_string)
+                        attachments = check_keys_proto(args, files, contextmanager[0], proto_string)
 
                     for string in string_list:
                         Table_Data = """
@@ -467,7 +486,6 @@ def writeHtmlReport(args):
                                 # Write attachments and key to html report and link to the extracted file
                                 # TODO check magic bytes for file type
                                 for key, image in attachments:
-
                                     effromzip(image, args)
 
                                     Atta = """
@@ -562,7 +580,9 @@ def writeHtmlReport(args):
 
     print()
     print("Done...")
+    write_to_tex(["Done."], args.display_window)
     print((time.time() - start_time))
+    write_to_tex(["Execute time "+str((time.time() - start_time))+"(s)."], args.display_window)
 
 
 # So weird
