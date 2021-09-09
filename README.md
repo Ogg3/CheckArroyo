@@ -12,6 +12,8 @@ First project on github :D
 
 # Usage
 
+Requirments: Python 3.7 or newer
+
 Extract the folder for snapchat as a zip file and then run either the GUI or CLI version\
 
 IOS - private/var/mobile/Containers/Data/Applications/ID\
