@@ -42,20 +42,23 @@ class GUI_args(object):
 # Return known types of content types
 def check_ctype(int_ctype):
 
-    # 1 is text message
-    if int_ctype == 1:
-        return "Text message"
-    # 0 is snap
-    elif int_ctype == 0:
-        return "Snap"
-    # 2 is media
-    elif int_ctype == 2:
-        return "Media"
-    # 4 is audio messages
-    elif int_ctype == 4:
-        return "Audio message"
+    if int(int_ctype):
+        # 1 is text message
+        if int_ctype == 1:
+            return "Text message"
+        # 0 is snap
+        elif int_ctype == 0:
+            return "Snap"
+        # 2 is media
+        elif int_ctype == 2:
+            return "Media"
+        # 4 is audio messages
+        elif int_ctype == 4:
+            return "Audio message"
+        else:
+            return "Content type " + str(int_ctype)
     else:
-        return "Content type " + str(int_ctype)
+        print("ERROR - lib.check_ctype excpects a int, not "+str(type(int_ctype)))
 
 
 # GUI Section
@@ -428,7 +431,8 @@ def inRange(start, stop, time_check):
         return True
 
 
-# Checks zipfile from files with the name string and returns a list with paths to those files
+# Checks zipfile from files with the name string and if the name is larger than 21 in length
+# returns a list with paths to those files
 def checkforfile21(path):
     path = os.path.abspath(path)
 
@@ -475,24 +479,6 @@ def checkinzip(args, string, mode):
         return None
     else:
         return data
-
-
-# Reads content managers to report back where a key is used
-def readContentManager(key, path):
-    try:
-        path = os.path.abspath(path)
-        # Opens contentManagerDb.db
-        # Searches blob (CONTENT_DEFINITION) for a string
-        # TODO report if no attachment was found
-        conn = sqlite3.connect(path)
-
-        qr = "SELECT * FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '%" + key + "%'"
-
-        curs = conn.execute(qr)
-
-        return curs
-    except:
-        print("Could not connect to: ", str(path))
 
 
 # Convert string to time object
@@ -568,7 +554,7 @@ def check_keys_proto(args, files, con, proto_string):
     try:
         conn = sqlite3.connect(args.output_path + "/" + con)
     except Exception as e:
-        print("Could not connect to: " + str(args.output_path + "/" + str(con)))
+        print("ERROR - Could not connect to: " + str(args.output_path + "/" + str(con)))
         print(e)
         return
 
@@ -577,8 +563,12 @@ def check_keys_proto(args, files, con, proto_string):
 
         # Check length of key
         if len(i) > 15:
-            qr = "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '%" + i + "%'"
-            curs = conn.execute(qr)
+            try:
+                qr = "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '%" + i + "%'"
+                curs = conn.execute(qr)
+            except Exception as e:
+                print("ERROR - Could not check key: " + str(i))
+                print(e)
 
             # Loop through query
             for ii in curs:
@@ -603,82 +593,6 @@ def check_keys_proto(args, files, con, proto_string):
                     # Check if file is a key
                     if i in filename:
                         print("RARE - Found a key that is a file: " + str(i))
-    return match
-
-
-# Checks content managers for keys and stores them for later use
-"""
-3 - pics and videos
-4 - voice messages
-"""
-
-
-def check_keys(args, files, con):
-    match = []
-
-    try:
-        conn = sqlite3.connect(args.output_path + "/" + con)
-    except Exception as e:
-        print("Could not connect to: " + str(args.output_path + "/" + con))
-        print(e)
-        return
-
-    # Diffrent querys gives different speed
-    if args.speed == "F":
-        curs = conn.execute(
-            "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '3-%' OR KEY LIKE '4-%'")
-    elif args.speed == "M":
-        curs = conn.execute(
-            "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '3-%' OR KEY LIKE '4-%' OR KEY LIKE '10-%' OR KEY LIKE '16-%'")
-    elif args.speed == "S":
-        curs = conn.execute("SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE")
-
-    files_checked = 0
-    print("Querys checked against files..")
-    for res in curs:
-        files_checked = files_checked + 1
-        print('\r' + str(files_checked), end='', flush=True)
-        # Make it usable
-        condef = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", res[0].decode('utf-8', 'ignore')))
-
-        # Go through every image that can be found
-        for image in files:
-
-            # Check if the name of the file match what is stored in CONTENT_DEFENITION
-            if image.split('/')[len(image.split('/')) - 1] in condef:
-                if '3-content~' in res[1]:
-                    match.append((res[1].split('3-content~')[1][:21], checkinzip(args, image, "path"), res[1]))
-                elif '3-thumbnail~' in res[1]:
-                    match.append((res[1].split('3-thumbnail~')[1][:21], checkinzip(args, image, "path"), res[1]))
-                elif '10-deeplink_icon~' in res[1]:
-                    match.append((res[1].split('10-deeplink_icon~')[1], checkinzip(args, image, "path"), res[1]))
-                elif '10-topvideo_firstframe~' in res[1]:
-                    match.append((res[1].split('10-topvideo_firstframe~')[1], checkinzip(args, image, "path"), res[1]))
-                elif '10-lfv_firstframe~' in res[1]:
-                    match.append((res[1].split('10-lfv_firstframe~')[1], checkinzip(args, image, "path"), res[1]))
-                elif '10-topimage~' in res[1]:
-                    match.append((res[1].split('10-topimage~')[1], checkinzip(args, image, "path"), res[1]))
-                elif '10-topvideo~' in res[1]:
-                    match.append((res[1].split('10-topvideo~')[1], checkinzip(args, image, "path"), res[1]))
-                elif '13-' in res[1]:
-                    match.append((res[1].split('13-')[1], checkinzip(args, image, "path"), res[1]))
-                elif '16-' in res[1]:
-                    match.append((res[1].split('16-')[1], checkinzip(args, image, "path"), res[1]))
-                elif '16-overlay~' in res[1]:
-                    match.append((res[1].split('16-')[1], checkinzip(args, image, "path"), res[1]))
-                elif '16-video~' in res[1]:
-                    match.append((res[1].split('16-video~')[1], checkinzip(args, image, "path"), res[1]))
-                elif '3-' in res[1]:
-                    match.append((res[1].split('3-')[1][:21], checkinzip(args, image, "path"), res[1]))
-                elif '4-' in res[1]:
-                    match.append((res[1].split('4-')[1], checkinzip(args, image, "path"), res[1]))
-                elif '4-overlay~' in res[1]:
-                    match.append((res[1].split('4-overlay~')[1], checkinzip(args, image, "path"), res[1]))
-                elif '4-video~' in res[1]:
-                    match.append((res[1].split('4-video~')[1], checkinzip(args, image, "path"), res[1]))
-                elif image.split('/')[len(image.split('/')) - 1] in condef and image.split('/')[
-                    len(image.split('/')) - 1] in res[1]:
-                    match.append((res[1], checkinzip(args, image, "path"), res[1]))
 
     return match
 
@@ -686,8 +600,6 @@ def check_keys(args, files, con):
 """
 
 """
-
-
 def check_participants(convID, conn, PDpath):
     part = []
 
