@@ -14,7 +14,9 @@ import traceback
 
 from parse3 import *
 
-
+"""
+Make a class to match the args.parser being used for CLI
+"""
 class GUI_args(object):
     input_path = None
     output_path = None
@@ -38,8 +40,11 @@ class GUI_args(object):
         self.msg_id = msg_id
         self.display_window = display_window
 
-
-# Return known types of content types
+"""
+Check what type of content is being sent
+Return string if known
+Return number if unknown
+"""
 def check_ctype(int_ctype):
 
     if int(int_ctype):
@@ -60,15 +65,16 @@ def check_ctype(int_ctype):
     else:
         print("ERROR - lib.check_ctype excpects a int, not "+str(type(int_ctype)))
 
-
-# GUI Section
-# Insert a value in an entry box and del the existing text
+"""
+Insert a value in an entry box and del the existing text
+"""
 def ent_insert(ent, var):
     ent.delete(0, 'end')
     ent.insert(0, var)
 
-
-# Retrun the value from an entry widget and check if widget is empty
+"""
+Return the value from an entry widget and check if widget is empty
+"""
 def return_entry_check(en):
 
     content = en.get()
@@ -77,13 +83,15 @@ def return_entry_check(en):
     else:
         return content
 
-
-# Retrun the value from an entry widget without checking if widget is empty
+"""
+Return the value from an entry widget without checking if widget is empty
+"""
 def return_entry(en):
     return en.get()
 
-
-# Write a list to a text widget
+"""
+Write a list to a text widget
+"""
 def write_to_tex(lista, tex):
     try:
         tex.config(state=tk.NORMAL)
@@ -102,7 +110,9 @@ def write_to_tex(lista, tex):
         messagebox.showinfo("ERROR", traceback.format_exc() + "\n" + e.__doc__)
 
 
-# Write a string to a text widget
+"""
+Write a string to a text widget
+"""
 def write_string_tex(strin, tex):
     tex.config(state=tk.NORMAL)
 
@@ -113,38 +123,9 @@ def write_string_tex(strin, tex):
     tex.config(state=tk.DISABLED)
 
 
-# Write a strin to a rapport window
-def write_rapport_tex(lista, tex):
-    try:
-        def write_to(strin, tex):
-            s = strin + "\n"
-            tex.insert(tk.END, s)
-            tex.see(tk.END)
-
-        for i in range(len(lista)):
-            write_to(str(lista[i]), tex)
-        tex.insert(tk.END, "]" + "\n")
-        tex.see(tk.END)
-    except Exception as e:
-        messagebox.showinfo("ERROR", traceback.format_exc() + "\n" + e.__doc__)
-
-
-def write_rapport_image_tex(im, tex):
-    try:
-        tex.insert(tk.END, "[" + "\n")
-        tex.see(tk.END)
-
-        s = str(im)
-        tex.insert(tk.END, s)
-        tex.see(tk.END)
-
-        tex.insert(tk.END, "\n")
-        tex.see(tk.END)
-    except Exception as e:
-        messagebox.showinfo("ERROR", traceback.format_exc() + "\n" + e.__doc__)
-
-
-# Retrive the content of a text widget
+"""
+Retrive the content of a text widget
+"""
 def retrieve_input(tex):
     lista = []
     strin = ""
@@ -167,7 +148,9 @@ def check_list_for_empty(lst):
     return True
 
 
-# Check zip file for contetntmanagers and return the path of the largest one
+"""
+Check zip file for contetntmanagers and return the path of the largest one
+"""
 def check_contentmanagers(input_path, output_path):
 
     # Get the largest content manager
@@ -211,7 +194,11 @@ def check_contentmanagers(input_path, output_path):
         return manager, y
 
 
-# Decode string
+
+"""
+Decode a list of strings
+Emojis are not supported
+"""
 def decode_string(proto_string, bin_string):
     strings = []
 
@@ -235,8 +222,9 @@ def decode_string(proto_string, bin_string):
 
     return strings
 
-
-# return a dict of a nested dict
+"""
+return a dict of a nested dict
+"""
 def find_string_in_dict(data):
     for k, v in data.items():
         if isinstance(v, dict):
@@ -245,8 +233,9 @@ def find_string_in_dict(data):
         else:
             yield k, v
 
-
-# Turn a raw protobuf file to find a msg string
+"""
+Turn a raw protobuf file to find a msg string
+"""
 def proto_to_msg(bin_file):
     messages_found = []
     messages = ParseProto(bin_file)
@@ -258,8 +247,9 @@ def proto_to_msg(bin_file):
 
     return messages_found
 
-
-# Turn raw protobuf file and find key
+"""
+Turn raw protobuf file and find key
+"""
 def proto_to_key(bin_file):
     messages = ParseProto(bin_file)
 
@@ -272,27 +262,19 @@ def proto_to_key(bin_file):
 """
 If both values are None then no time has been set so all times are valid
 """
-def check_time(msg, args, gui_check):
-    # Check if GUI is being used or not
-    if gui_check:
-        if args.time_start != "" and args.time_stop != "":
-            # Check if message was created within a range of dates
-            return inRange(args.time_start, args.time_stop, msg)
-        else:
-            return True
+def check_time(msg, args):
+
+    # Check if both vars are in use
+    if args.time_start is not None and args.time_stop is not None:
+        # Check if message was created within a range of dates
+        return inRange(args.time_start, args.time_stop, msg)
     else:
-        if args.time_start is not None and args.time_stop is not None:
-            # Check if message was created within a range of dates
-            return inRange(args.time_start, args.time_stop, msg)
-        else:
             return True
 
 
 """
 Check blobs for usernames in primary.docobjects
 """
-
-
 def check_id_username(userid, pdpath):
     check = checkPD(userid, pdpath)
     if check != "":
@@ -305,8 +287,6 @@ def check_id_username(userid, pdpath):
 Used for CLI mode
 Displays contentmanagers and returns a content manager based on user input
 """
-
-
 def displayIOScontentmanagers(input_path, ouput_path):
     managers = []
 
@@ -555,7 +535,7 @@ def check_keys_proto(args, files, con, proto_string):
         conn = sqlite3.connect(args.output_path + "/" + con)
     except Exception as e:
         print("ERROR - Could not connect to: " + str(args.output_path + "/" + str(con)))
-        print(e)
+        #print(e)
         return
 
     # Can be more then one key
@@ -566,9 +546,11 @@ def check_keys_proto(args, files, con, proto_string):
             try:
                 qr = "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '%" + i + "%'"
                 curs = conn.execute(qr)
+
+            # Keys might have malformed the query
             except Exception as e:
                 print("ERROR - Could not check key: " + str(i))
-                print(e)
+                #print(e)
 
             # Loop through query
             for ii in curs:
@@ -621,3 +603,36 @@ def check_participants(convID, conn, PDpath):
         part.append(id)
 
     return part
+
+
+"""
+Statistically the owner should be the user that shows the most
+Get the user that has most occurrence in all conversations
+"""
+def get_owner():
+    pass
+
+
+"""
+Set up database to store data while its being parsed
+"""
+def create_store_data():
+    conn = sqlite3.connect('store_data.db')
+    c = conn.cursor()
+
+    c.execute('''
+              CREATE TABLE IF NOT EXISTS Participants
+              ([id] INTEGER PRIMARY KEY, [Conversation] TEXT, [username] TEXT)
+              ''')
+
+    c.execute('''
+              CREATE TABLE IF NOT EXISTS messages
+              ([id] INTEGER PRIMARY KEY, [Conversation_id] text, [sent_by] text, [Content_type] INTEGER, [Message] TEXT, [Attachments_id] INTEGER, [Timestamp_sent] TEXT, [Timestamp_recived] TEXT)
+              ''')
+
+    c.execute('''
+              CREATE TABLE IF NOT EXISTS messages_attachments
+              ([id] INTEGER PRIMARY KEY, [Attachments_id] INTEGER, [filename] TEXT, [contentmangare_key] TEXT)
+              ''')
+
+    conn.commit()

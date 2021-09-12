@@ -1,5 +1,5 @@
 """
-Version 0-5-8
+Version 0-6-0
 github.com/Ogg3/CheckArroyo
 """
 import argparse
@@ -101,24 +101,21 @@ def main():
 6-msg_id
 """
 
+# Store data in database
+def store_data(args):
 
-# Write report on findings
-def writeHtmlReport(args):
+    # Create database to store data
+    create_store_data()
+
+    # Start execute timer
     start_time = time.time()
-    #args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
+
+    # Check if user is using gui
     GUI_check = False
     # Check if CLI or GUI
     try:
         a = args[0]
         GUI_check = True
-        # writeHtmlReport([return_entry_check(input_path),
-        #                                                               return_entry_check(output_path),
-        #                                                               speed.get(),
-        #                                                               mode.get(),
-        #                                                               return_entry(time_start),
-        #                                                               return_entry(time_stop),
-        #                                                               return_entry(msg_id),
-        #                                                               display_window])
         args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
         print("INFO - Using GUI")
         write_to_tex(["INFO - Using GUI"], args.display_window)
@@ -126,12 +123,15 @@ def writeHtmlReport(args):
         print("INFO - Using CLI")
         pass
 
+    # Iphone mode
     if args.mode == "IOS":
         write_to_tex(["INFO - Using IOS mode"], args.display_window)
         print("INFO - Using IOS mode")
 
-        # Extract needed content
+        # Extract arroyo and perform checks
         arroyo = checkandextract(args, 'arroyo.db', "file")
+
+        # Check if file exist
         if arroyo is None:
             write_to_tex(["ERROR - Could not find arroyo."], args.display_window)
             print("ERROR - Could not find arroyo.")
@@ -151,7 +151,6 @@ def writeHtmlReport(args):
         print("INFO - Using " + str(contextmanager) + ".")
         write_to_tex(["INFO - Found " + str(nrofcontextmanagers) + " contentmanagers."], args.display_window)
         write_to_tex(["INFO - Using " + str(contextmanager) + "."], args.display_window)
-
 
         PDpath = checkandextract(args, 'primary.docobjects', "file")
         if PDpath is None:
@@ -189,6 +188,11 @@ def writeHtmlReport(args):
     write_to_tex(["INFO - Connecting to " + arroyo], args.display_window)
 
     conn = sqlite3.connect(arroyo)
+
+
+# Write report on findings
+def writeHtmlReport(args):
+
 
     # Make base directory
     os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + timea)
