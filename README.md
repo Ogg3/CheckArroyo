@@ -1,1 +1,1 @@
-A branch so i can make commits of unfinished stuff if i work form home
+A branch so I can make commits of unfinished stuff if I work from home
