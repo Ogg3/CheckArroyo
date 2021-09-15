@@ -1,5 +1,5 @@
 """
-Version 0-6-1
+Version dev
 github.com/Ogg3/CheckArroyo
 """
 
@@ -14,7 +14,9 @@ import traceback
 
 from parse3 import *
 
-
+"""
+Make a class to match the args.parser being used for CLI
+"""
 class GUI_args(object):
     input_path = None
     output_path = None
@@ -38,11 +40,14 @@ class GUI_args(object):
         self.msg_id = msg_id
         self.display_window = display_window
 
-
-# Return known types of content types
+"""
+Check what type of content is being sent
+Return string if known
+Return number if unknown
+"""
 def check_ctype(int_ctype):
 
-    if int(int_ctype):
+    if type(int_ctype) is int:
         # 1 is text message
         if int_ctype == 1:
             return "Text message"
@@ -61,102 +66,6 @@ def check_ctype(int_ctype):
         print("ERROR - lib.check_ctype excpects a int, not "+str(type(int_ctype)))
 
 
-# GUI Section
-# Insert a value in an entry box and del the existing text
-def ent_insert(ent, var):
-    ent.delete(0, 'end')
-    ent.insert(0, var)
-
-
-# Retrun the value from an entry widget and check if widget is empty
-def return_entry_check(en):
-
-    content = en.get()
-    if content == "":
-        messagebox.showinfo("ERROR", "ENTRY BOX " + str(en) + "IS EMPTY")
-    else:
-        return content
-
-
-# Retrun the value from an entry widget without checking if widget is empty
-def return_entry(en):
-    return en.get()
-
-
-# Write a list to a text widget
-def write_to_tex(lista, tex):
-    try:
-        tex.config(state=tk.NORMAL)
-
-        def write_to(strin, tex):
-            s = strin + "\n"
-            tex.insert(tk.END, s)
-            tex.see(tk.END)
-
-        for i in range(len(lista)):
-            write_to(str(lista[i]), tex)
-            tex.insert(tk.END, "\n")
-
-        tex.config(state=tk.DISABLED)
-    except Exception as e:
-        messagebox.showinfo("ERROR", traceback.format_exc() + "\n" + e.__doc__)
-
-
-# Write a string to a text widget
-def write_string_tex(strin, tex):
-    tex.config(state=tk.NORMAL)
-
-    s = str(strin) + "\n"
-    tex.insert(tk.END, s)
-    tex.see(tk.END)
-
-    tex.config(state=tk.DISABLED)
-
-
-# Write a strin to a rapport window
-def write_rapport_tex(lista, tex):
-    try:
-        def write_to(strin, tex):
-            s = strin + "\n"
-            tex.insert(tk.END, s)
-            tex.see(tk.END)
-
-        for i in range(len(lista)):
-            write_to(str(lista[i]), tex)
-        tex.insert(tk.END, "]" + "\n")
-        tex.see(tk.END)
-    except Exception as e:
-        messagebox.showinfo("ERROR", traceback.format_exc() + "\n" + e.__doc__)
-
-
-def write_rapport_image_tex(im, tex):
-    try:
-        tex.insert(tk.END, "[" + "\n")
-        tex.see(tk.END)
-
-        s = str(im)
-        tex.insert(tk.END, s)
-        tex.see(tk.END)
-
-        tex.insert(tk.END, "\n")
-        tex.see(tk.END)
-    except Exception as e:
-        messagebox.showinfo("ERROR", traceback.format_exc() + "\n" + e.__doc__)
-
-
-# Retrive the content of a text widget
-def retrieve_input(tex):
-    lista = []
-    strin = ""
-    for i in tex.get("1.0", 'end-1c'):
-        if i != "\n":
-            strin = strin + i
-        else:
-            lista.append(strin)
-            strin = ""
-    return lista
-
-
 # Check if list contains only empty strings
 def check_list_for_empty(lst):
 
@@ -167,7 +76,9 @@ def check_list_for_empty(lst):
     return True
 
 
-# Check zip file for contetntmanagers and return the path of the largest one
+"""
+Check zip file for contetntmanagers and return the path of the largest one
+"""
 def check_contentmanagers(input_path, output_path):
 
     # Get the largest content manager
@@ -211,7 +122,11 @@ def check_contentmanagers(input_path, output_path):
         return manager, y
 
 
-# Decode string
+
+"""
+Decode a list of strings
+Emojis are not supported
+"""
 def decode_string(proto_string, bin_string):
     strings = []
 
@@ -235,8 +150,9 @@ def decode_string(proto_string, bin_string):
 
     return strings
 
-
-# return a dict of a nested dict
+"""
+return a dict of a nested dict
+"""
 def find_string_in_dict(data):
     for k, v in data.items():
         if isinstance(v, dict):
@@ -245,8 +161,9 @@ def find_string_in_dict(data):
         else:
             yield k, v
 
-
-# Turn a raw protobuf file to find a msg string
+"""
+Turn a raw protobuf file to find a msg string
+"""
 def proto_to_msg(bin_file):
     messages_found = []
     messages = ParseProto(bin_file)
@@ -258,8 +175,9 @@ def proto_to_msg(bin_file):
 
     return messages_found
 
-
-# Turn raw protobuf file and find key
+"""
+Turn raw protobuf file and find key
+"""
 def proto_to_key(bin_file):
     messages = ParseProto(bin_file)
 
@@ -272,27 +190,19 @@ def proto_to_key(bin_file):
 """
 If both values are None then no time has been set so all times are valid
 """
-def check_time(msg, args, gui_check):
-    # Check if GUI is being used or not
-    if gui_check:
-        if args.time_start != "" and args.time_stop != "":
-            # Check if message was created within a range of dates
-            return inRange(args.time_start, args.time_stop, msg)
-        else:
-            return True
+def check_time(msg, args):
+
+    # Check if both vars are in use
+    if args.time_start is not None and args.time_stop is not None:
+        # Check if message was created within a range of dates
+        return inRange(args.time_start, args.time_stop, msg)
     else:
-        if args.time_start is not None and args.time_stop is not None:
-            # Check if message was created within a range of dates
-            return inRange(args.time_start, args.time_stop, msg)
-        else:
             return True
 
 
 """
 Check blobs for usernames in primary.docobjects
 """
-
-
 def check_id_username(userid, pdpath):
     check = checkPD(userid, pdpath)
     if check != "":
@@ -305,8 +215,6 @@ def check_id_username(userid, pdpath):
 Used for CLI mode
 Displays contentmanagers and returns a content manager based on user input
 """
-
-
 def displayIOScontentmanagers(input_path, ouput_path):
     managers = []
 
@@ -547,7 +455,12 @@ def readfromzip(zip, file):
         return f.read(file)
 
 
-# Check keys with proto strings
+#
+"""
+Check keys with proto strings
+Contentmanager is the queryed for the string and checked if there is a hit
+Returns a list of tupels where the tupels are (key, path_to_image)
+"""
 def check_keys_proto(args, files, con, proto_string):
     match = []
 
@@ -566,33 +479,38 @@ def check_keys_proto(args, files, con, proto_string):
             try:
                 qr = "SELECT CONTENT_DEFINITION, KEY FROM CONTENT_OBJECT_TABLE WHERE KEY LIKE '%" + i + "%'"
                 curs = conn.execute(qr)
+
+                # Loop through query
+                for ii in curs:
+
+                    # Check if query is empty
+                    if i == ():
+                        return False
+                    # print('INFO - Found key in contentmanager: '+i)
+                    # For all files
+                    for iii in files:
+
+                        # Get only the file name
+                        filename = iii.split('/')[len(iii.split('/')) - 1]
+
+                        # Decode the blob
+                        dblob = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ -]+", ii[0].decode('utf-8', 'ignore')))
+
+                        # If a filename can be found in the blob add it in a tuple to matching list
+                        if filename in dblob:
+                            # print('INFO - Found link with key and file')
+                            match.append((i, iii))
+
+                        # Check if file is a key
+                        if i in filename:
+                            print("RARE - Found a key that is a file: " + str(i))
+
+            # Keys might have malformed the query
             except Exception as e:
                 print("ERROR - Could not check key: " + str(i))
                 print(e)
-
-            # Loop through query
-            for ii in curs:
-                # Check if query is empty
-                if i == ():
-                    return False
-                # print('INFO - Found key in contentmanager: '+i)
-                # For all files
-                for iii in files:
-
-                    # Get only the file name
-                    filename = iii.split('/')[len(iii.split('/')) - 1]
-
-                    # Decode the blob
-                    dblob = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ -]+", ii[0].decode('utf-8', 'ignore')))
-
-                    # If a filename can be found in the blob add it in a tuple to matching list
-                    if filename in dblob:
-                        # print('INFO - Found link with key and file')
-                        match.append((i, iii))
-
-                    # Check if file is a key
-                    if i in filename:
-                        print("RARE - Found a key that is a file: " + str(i))
+                print(qr)
+                print()
 
     return match
 
@@ -621,3 +539,107 @@ def check_participants(convID, conn, PDpath):
         part.append(id)
 
     return part
+
+
+"""
+Statistically the owner should be the user that shows the most
+Get the user that has most occurrence in all conversations
+"""
+def get_owner():
+    pass
+
+
+"""
+Set up database to store data while its being parsed
+"""
+def create_store_data(database):
+    #[id] INTEGER PRIMARY KEY,
+    conn = sqlite3.connect(database)
+
+    conn.execute('''
+              CREATE TABLE IF NOT EXISTS Participants
+              ( [Conversation] TEXT, [username] TEXT, [snapchat_id] TEXT)
+              ''')
+
+    conn.execute('''
+              CREATE TABLE IF NOT EXISTS messages
+              ([Conversation_id] text, [sent_by_username] text, [sent_by_snapchat_id] text, [Content_type] INTEGER, [Message_decoded] TEXT, [Message_og_id] TEXT, [Attachments_id] INTEGER, [Timestamp_sent] TEXT, [Timestamp_recived] TEXT)
+              ''')
+
+    conn.execute('''
+              CREATE TABLE IF NOT EXISTS messages_attachments
+              ( [Attachments_id] INTEGER, [filename] TEXT, [contentmangare_key] TEXT)
+              ''')
+
+    conn.commit()
+
+
+"""
+If sqlite3 doesnt like opening two databases, this might work
+"""
+def insert_participants(database, Conversation, username, snapchat_id):
+    conn = sqlite3.connect(database)
+    c = conn.cursor()
+    qr ='INSERT INTO Participants VALUES("'+str(Conversation)+'", "'+str(username)+'", "'+str(snapchat_id)+'")'
+    c.execute(qr)
+    conn.commit()
+
+
+def insert_message(database, Conversation_id, sent_by_username, sent_by_snapchat_id, Content_type, Message_decoded, Message_encoded, Attachments_id, Timestamp_sent, Timestamp_recived):
+    conn = sqlite3.connect(database)
+    qr ='INSERT INTO messages VALUES("'+str(Conversation_id)+'", "'+str(sent_by_username)+'", "'+str(sent_by_snapchat_id)+'", "'+str(Content_type)+'", "'+str(Message_decoded)+'", "'+str(Message_encoded)+'", "'+str(Attachments_id)+'", "'+str(Timestamp_sent)+'", "'+str(Timestamp_recived)+'")'
+    conn.execute(qr)
+    conn.commit()
+
+
+def insert_attachment(database, Attachments_id, filename, contentmangare_key):
+    conn = sqlite3.connect(database)
+    qr ='INSERT INTO messages_attachments VALUES("'+str(Attachments_id)+'", "'+str(filename)+'", "'+str(contentmangare_key)+'")'
+    conn.execute(qr)
+    conn.commit()
+
+
+"""
+Check if file is a database
+"""
+def check_database(filename):
+    conn = sqlite3.connect(filename)
+    c = conn.cursor()
+    result = c.execute("SELECT sql FROM sqlite_master")
+
+    # Check if results are returned
+    for i in result:
+        if i is not None:
+            return True
+
+
+"""
+
+"""
+def get_participants(database, conversation_id):
+    ret = []
+
+    conn = sqlite3.connect(database)
+    qr = 'SELECT username, snapchat_id FROM Participants WHERE Conversation =="%s"' % conversation_id
+    curs = conn.execute(qr)
+
+    for res in curs:
+        ret.append(res)
+
+    return ret
+
+
+"""
+
+"""
+def get_attachments(database, attachments_id):
+    ret = []
+
+    conn = sqlite3.connect(database)
+    qr = 'SELECT filename FROM messages_attachments WHERE Attachments_id =="%s"' % attachments_id
+    curs = conn.execute(qr)
+
+    for res in curs:
+        ret.append(res)
+
+    return ret
