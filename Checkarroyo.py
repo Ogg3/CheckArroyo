@@ -102,7 +102,7 @@ def main():
 """
 
 # Store data in database
-def pars_data(args, timea):
+def pars_data(args, timea, GUI_check):
 
     # Connect to database
     database = args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "store_data.db"
@@ -112,18 +112,6 @@ def pars_data(args, timea):
 
     # Start execute timer
     start_time = time.time()
-
-    # Check if user is using gui
-    GUI_check = False
-    # Check if CLI or GUI
-    try:
-        a = args[0]
-        GUI_check = True
-        args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
-        print("INFO - Using GUI")
-    except:
-        print("INFO - Using CLI")
-        pass
 
     # Iphone mode
     if args.mode == "IOS":
@@ -216,8 +204,10 @@ def pars_data(args, timea):
                     insert_participants(database, conv_id, username, snapchat_id)
                 check = False
 
+            raw_timestamp = i[7]
+
             # Check if time filter is applied
-            res = check_time(i[7], args)
+            res = check_time(raw_timestamp, args)
 
             # Content type
             ctype = i[13]
@@ -283,16 +273,30 @@ def pars_data(args, timea):
                                 insert_message(database, conv_id, sent_by_username, sent_by_snapchat_id, ctype_string, string_list, i[1], -1,
                                                i[7], i[8])
 
+    owner = get_owner(database)
+
     print()
     print("INFO - Parsing complete")
     execute_time = (time.time() - start_time)
     print(str(execute_time)+" (s)")
 
-    return convons, execute_time, database
+    return convons, execute_time, database, owner
 
 
 # Write report on findings
 def writeHtmlReport(args):
+
+    # Check if user is using gui
+    GUI_check = False
+    # Check if CLI or GUI
+    try:
+        a = args[0]
+        GUI_check = True
+        args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6])
+        print("INFO - Using GUI")
+    except Exception as e:
+        print("INFO - Using CLI")
+        pass
 
     # Create timestamp for when report was created
     timea = str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
@@ -303,20 +307,26 @@ def writeHtmlReport(args):
     # Make conversation directory
     os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "conversation-reports")
 
+    # Create report file
+    with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "Report.html", "w") as a:
+        a.write("<script></script>")
+
     # Pars data and store in database
-    parsde_data, execute_time, database = pars_data(args, timea)
+    parsde_data, execute_time, database, owner = pars_data(args, timea, GUI_check)
+
+    # Export contacts
+    export_users(args, timea, database)
 
     # Connect to stored data
     conn = sqlite3.connect(database)
-
-
-    msg = 0
-    Attatchments = 0
 
     print("INFO - Writing html reports")
 
     # For every conversation
     for x in parsde_data:
+        msg = 0
+        Attatchments = 0
+
         print('INFO - writing conversation: ' + x)
         # Write html report
         with open(
@@ -480,7 +490,12 @@ def writeHtmlReport(args):
 
                 # Set database vars
                 conversation_id = i[0]
-                sent_by_username = i[1]
+
+                # Check if username is owner
+                if i[1] == owner:
+                    sent_by_username = i[1]+" (OWNER)"
+                else:
+                    sent_by_username = i[1]
                 sent_by_snapchat_id = i[2]
                 content_type = i[3]
                 message_decoded = i[4]
@@ -513,9 +528,10 @@ def writeHtmlReport(args):
                             """
                         f.write(Table_Header1)
 
+                        parties = get_participants(database, conversation_id)
 
                         # Get participants of a chat from database
-                        for username, snapchat_id in get_participants(database, conversation_id):
+                        for username, snapchat_id in parties:
                             data = """
                                     <tr>
                                         <th>%s, %s</th>
@@ -534,26 +550,26 @@ def writeHtmlReport(args):
                 check = True
 
 #--------------------------------------Message metadata----------------------------------------------------------------
+                timestamp_sent, timestamp_recived = get_timestamp(database, message_og_id, timestamp_sent_raw)
+
                 Table_Header = """
                         <tbody>
                             <tr>
                                 <tr>
-                                    <th class="color1"><b> %s </b> Created: %s UTC +0 Read: %s UTC +0</th>
+                                    <th class="color1"><b> %s </b> Created: %s localtime Read: %s localtime</th>
                                 </tr>
                                 <tr>
                                     <th class="color2"> %s </th>
                                 </tr>
                             </tr> 
     
-    """ % (sent_by_username, convTime(timestamp_sent_raw), convTime(timestamp_recived_raw), content_type)
+    """ % (sent_by_username, timestamp_sent, timestamp_recived, content_type)
 
                 # Header for msg
                 f.write(Table_Header)
     #--------------------------------------------------------------------------------------------------------------------
 
-                # if a text message was found
-                if content_type == "Text message":
-                    msg = msg + 1
+                msg = msg + 1
 
                 # Write strings that where found
                 Table_Data = """
@@ -632,12 +648,12 @@ def writeHtmlReport(args):
     """
             f.write(End)
 
-    with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "Report.html", "w") as a:
+        with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "Report.html", "a") as a:
 
-        for x in parsde_data:
             link = "./conversation-reports" + "\\" + x + "-HTML-Report.html"
             name = x + "-HTML-Report.html"
             home = """
+            <div style="border: 1px solid black;">
                 <div id="stats"> 
                     <table class="column-stats" >
                         <tr>
@@ -649,26 +665,56 @@ def writeHtmlReport(args):
                     """ % (link, name)
             a.write(home)
 
-        Stats = """
+            Table_Header1 = """
                 <div id="stats"> 
                     <table class="column-stats" >
                         <tr>
-                            <th><b> Stats </b> </th>
+                            <th class="color1"><b>Participants</b></th>
                         </tr>
-                        <tr>
-                            <td>Messages decoded: %s</td>
-                        </tr>
-                        <tr>
-                            <td>Attachments found: %s</td>
-                        </tr>
-                        <tr>
-                            <td>Run time (s): %s</td> 
-                        </tr>
-                    </table>
+                """
+            a.write(Table_Header1)
 
+            # Get participants of a chat from database
+            for username, snapchat_id in parties:
+                if username == owner:
+                    username = username+" (OWNER)"
+                data = """
+                        <tr>
+                            <td>%s, %s</th>
+                        </tr>
+                """ % (username, snapchat_id)
+
+                a.write(data)
+
+            # ENd of Participants
+            Table_ender1 = """
+                    
+                    </table>
                 </div>
-                        """ % (msg, Attatchments, execute_time)
-        a.write(Stats)
+            """
+            a.write(Table_ender1)
+
+            Stats = """
+                    <div id="stats"> 
+                        <table class="column-stats" >
+                            <tr>
+                                <th><b> Stats </b> </th>
+                            </tr>
+                            <tr>
+                                <td>Messages decoded: %s</td>
+                            </tr>
+                            <tr>
+                                <td>Attachments found: %s</td>
+                            </tr>
+                            <tr>
+                                <td> Latest activity: %s </td>
+                            </tr>
+                        </table>
+    
+                    </div>
+            </div>
+                            """ % (msg, Attatchments, timestamp_sent)
+            a.write(Stats)
 
     print("INFO - Done")
 
