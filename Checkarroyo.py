@@ -1,5 +1,4 @@
 """
-Version dev
 github.com/Ogg3/CheckArroyo
 """
 import argparse
@@ -115,45 +114,68 @@ def pars_data(args, timea, GUI_check):
 
     # Iphone mode
     if args.mode == "IOS":
-        print("INFO - Using IOS mode")
+        info = "INFO - Using IOS mode"
+        print(info)
+        write_to_log(args, timea, info)
 
         # Extract arroyo and perform checks
         arroyo = checkandextract(args, 'arroyo.db', "file")
 
         # Check if file exist
         if arroyo is None:
-            print("ERROR - Could not find arroyo.")
+            info = "ERROR - Could not find arroyo."
+            print(info)
+            write_to_log(args, timea, info)
             return
 
         if not GUI_check:
             contextmanager = displayIOScontentmanagers(args.input_path, args.output_path)
-            print("INFO - Using choose contentmanager mode")
+            info = "INFO - Using choose contentmanager mode"
+            print(info)
+            write_to_log(args, timea, info)
         else:
-            print("INFO - Using auto contentmanager mode")
+            info = "INFO - Using auto contentmanager mode"
+            print(info)
+            write_to_log(args, timea, info)
             contextmanager, nrofcontextmanagers = check_contentmanagers(args.input_path, args.output_path)
-            print("INFO - Found " + str(nrofcontextmanagers) + " contentmanagers.")
+
+            info = "INFO - Found " + str(nrofcontextmanagers) + " contentmanagers."
+            print(info)
+            write_to_log(args, timea, info)
 
         if contextmanager is None:
-            print("ERROR - Could not find contentmanager.")
+            info = "ERROR - Could not find contentmanager."
+            print(info)
+            write_to_log(args, timea, info)
             return
 
-        print("INFO - Using " + str(contextmanager) + ".")
+        info = "INFO - Using " + str(contextmanager) + "."
+        print(info)
+        write_to_log(args, timea, info)
 
         PDpath = checkandextract(args, 'primary.docobjects', "file")
         if PDpath is None:
-            print("ERROR - Could not find PDpath.")
+            info = "ERROR - Could not find PDpath."
+            print(info)
+            write_to_log(args, timea, info)
             return
 
-        print("INFO - Using " + PDpath + " as primary.docobjects")
+        info = "INFO - Using " + PDpath + " as primary.docobjects"
+        print(info)
+        write_to_log(args, timea, info)
 
         files = ""
 
         if args.speed == "S":
             # Make a list of files in com.snap.file_manager_
             files = checkinzip(args, 'com.snap.file_manager_', "path")
-            print("INFO - Checking for attachments")
+            info = "INFO - Checking for attachments"
+            print(info)
+            write_to_log(args, timea, info)
         else:
-            print("INFO - NOT checking for attachments")
+            info = "INFO - NOT checking for attachments"
+            print(info)
+            write_to_log(args, timea, info)
 
     # Android mode
     elif args.mode == "AND":
@@ -161,25 +183,35 @@ def pars_data(args, timea, GUI_check):
 
     # Only arroyo mode
     elif args.mode == "ARY":
-        print("INFO - User is using arroyo.db mode")
+        info = "INFO - User is using arroyo.db mode"
+        print(info)
+        write_to_log(args, timea, info)
         arroyo = args.input_path
 
-    print("INFO - Connecting to " + arroyo)
+    info = "INFO - Connecting to " + arroyo
+    print(info)
+    write_to_log(args, timea, info)
 
     conn_arroyo = sqlite3.connect(arroyo)
 
     convons = getConv(conn_arroyo, args.msg_id)
 
     if args.msg_id is not None:
-        print("INFO - Filtering for " + args.msg_id)
+        info = "INFO - Filtering for " + args.msg_id
+        print(info)
+        write_to_log(args, timea, info)
 
-    print("INFO - Found conversations " + str(convons))
+    info = "INFO - Found conversations " + str(convons)
+    print(info)
+    write_to_log(args, timea, info)
 
     # Set var
     attachment_id = 0
     nr=0
 
-    print("INFO - Parsing messages")
+    info = "INFO - Parsing messages"
+    print(info)
+    write_to_log(args, timea, info)
 
     # For every conversation
     for conv_id in convons:
@@ -276,9 +308,14 @@ def pars_data(args, timea, GUI_check):
     owner = get_owner(database)
 
     print()
-    print("INFO - Parsing complete")
+    info = "INFO - Parsing complete"
+    print(info)
+    write_to_log(args, timea, info)
+
     execute_time = (time.time() - start_time)
-    print(str(execute_time)+" (s)")
+    info = str(execute_time)+" (s)"
+    print(info)
+    write_to_log(args, timea, info)
 
     return convons, execute_time, database, owner
 
@@ -299,7 +336,7 @@ def writeHtmlReport(args):
         pass
 
     # Create timestamp for when report was created
-    timea = str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+    timea = str(datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
 
     # Make base directory
     os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + timea)
@@ -311,6 +348,14 @@ def writeHtmlReport(args):
     with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "Report.html", "w") as a:
         a.write("<script></script>")
 
+    # Create log file
+    with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "log.txt", "w") as a:
+        a.write("")
+
+    # Create log file
+    with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "log.txt", "w") as a:
+        a.write("")
+
     # Pars data and store in database
     parsde_data, execute_time, database, owner = pars_data(args, timea, GUI_check)
 
@@ -320,14 +365,19 @@ def writeHtmlReport(args):
     # Connect to stored data
     conn = sqlite3.connect(database)
 
-    print("INFO - Writing html reports")
+    info = "INFO - Writing html reports"
+    print(info)
+    write_to_log(args, timea, info)
 
     # For every conversation
     for x in parsde_data:
         msg = 0
         Attatchments = 0
 
-        print('INFO - writing conversation: ' + x)
+        info = 'INFO - writing conversation: ' + x
+        print(info)
+        write_to_log(args, timea, info)
+
         # Write html report
         with open(
                 args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "conversation-reports" + "\\" + x + "-HTML-Report.html",
@@ -716,7 +766,9 @@ def writeHtmlReport(args):
                             """ % (msg, Attatchments, timestamp_sent)
             a.write(Stats)
 
-    print("INFO - Done")
+    info = "INFO - Done"
+    print(info)
+    write_to_log(args, timea, info)
 
 # So weird
 if __name__ == '__main__':

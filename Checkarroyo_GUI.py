@@ -1,11 +1,12 @@
 """
-Version 0-5-8
 github.com/Ogg3/CheckArroyo
 """
 from tkinter import filedialog
 
 from Checkarroyo import writeHtmlReport
 from lib import *
+from tkinter import messagebox
+import tkinter as tk
 
 # Insert a value in an entry box and del the existing text
 def ent_insert(ent, var):
