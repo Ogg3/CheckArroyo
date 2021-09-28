@@ -14,15 +14,22 @@ First project on github :D
 
 Requirments: Python 3.9
 
+## If you have a Full File System
+
 Extract the folder for snapchat as a zip file and then run either the GUI or CLI version\
 
 IOS - private/var/mobile/Containers/Data/Applications/ID\
 Android - Soon\
+
+## If you only have certain databases
+
+Extract the database (for now only arroyo.db is supported) and choose the database as input.\
 \
 Arroyo\
   IOS - private/var/mobile/Containers/Data/Applications/ID/Documents/user_scoped/ID/arroyo/arroyo.db\
   Android - 
   
+## Flags
 -i input file\
 -o outputfolder\
 -m mode. IOS = Iphone, AND = Android or ARY = arroyo.\
@@ -31,6 +38,11 @@ Arroyo\
 Optional filters\
 -t1 time start -t2 time stop. Only display conversations within timespan\
 -msg filter for a specific conversation ID
+
+## Exapmles
+Example: CheckArroyo.py -i ZIPFILE -o OUTPUTFOLDER -m IOS -s S
+Example: CheckArroyo.py -i arroyo.db -o OUTPUTFOLDER -m IOS
+Example: CheckArroyo.py -i ZIPFILE -o OUTPUTFOLDER -m IOS -s S -t1 2021-01-01 -t2 2021-02-02 -msg ID_HERE
 
 # Tips
 
