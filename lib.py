@@ -514,7 +514,7 @@ def check_keys_proto(args, files, con, proto_string):
     # Check output
     if key == None:
         errorstring = "ERROR - Could not find key row in contentmanager. Check the database for changes."
-        write_to_log(errorstring)
+        #write_to_log(errorstring)
         print(errorstring)
         return
 
@@ -556,7 +556,7 @@ def check_keys_proto(args, files, con, proto_string):
 
             except Exception as e:
                 errorstring = "ERROR - Could not check key " + str(string) + " using " + qr + " " + str(e)
-                write_to_log(errorstring)
+                #write_to_log(errorstring)
                 print(errorstring)
                 return
 
@@ -636,7 +636,7 @@ def check_participants(convID, conn, PDpath):
         return part
     except Exception as e:
         errorstring = "ERROR - Could not check participants for " + str(convID) + " using " + PDpath + " " + str(e)
-        write_to_log(errorstring)
+        #write_to_log(errorstring)
         print(errorstring)
 
 
@@ -678,7 +678,7 @@ def insert_participants(database, Conversation, username, snapchat_id):
         conn.commit()
     except Exception as e:
         errorstring = "ERROR - Could not insert " + str(qr) + " to store_data.db." + str(e)
-        write_to_log(errorstring)
+        #write_to_log(errorstring)
         print(errorstring)
 
 
@@ -697,7 +697,7 @@ def insert_message(database, Conversation_id, sent_by_username, sent_by_snapchat
         conn.commit()
     except Exception as e:
         errorstring = "ERROR - Could not insert " + str(qr) + " to store_data.db." + str(e)
-        write_to_log(errorstring)
+        #write_to_log(errorstring)
         print(errorstring)
 
 
@@ -713,7 +713,7 @@ def insert_attachment(database, Attachments_id, filename, contentmangare_key):
         conn.commit()
     except Exception as e:
         errorstring = "ERROR - Could not insert "+str(qr)+" to store_data.db." + str(e)
-        write_to_log(errorstring)
+        #write_to_log(errorstring)
         print(errorstring)
 
 
