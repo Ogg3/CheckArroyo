@@ -1,4 +1,0 @@
-2021-08-26: 
-- Rework gui
-- rework html reports for easier reading
-- Add check for user account
