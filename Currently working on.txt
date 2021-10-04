@@ -8,3 +8,5 @@ Perform checks on the databases that are given
 --- display to user what is being parsed
 
 Fix log output
+
+If a text message has a " or ' it breaks the sql query when inserting to store_data.db
