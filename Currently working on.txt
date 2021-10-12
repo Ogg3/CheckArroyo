@@ -1,4 +1,3 @@
-0-6-4
 Perform checks on the databases that are given
 - structure
 - data
@@ -10,3 +9,5 @@ Perform checks on the databases that are given
 Fix log output
 
 If a text message has a " or ' it breaks the sql query when inserting to store_data.db
+
+Android
