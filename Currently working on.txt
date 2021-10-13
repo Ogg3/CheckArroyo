@@ -1,13 +1,1 @@
-Perform checks on the databases that are given
-- structure
-- data
-- add edge cases
--- if only arroyo goes through the checks
---- dont pars contentmanager or primary.docobjects
---- display to user what is being parsed
-
-Fix log output
-
-If a text message has a " or ' it breaks the sql query when inserting to store_data.db
-
-Android
+Finishing up for new release
