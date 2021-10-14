@@ -164,7 +164,7 @@ def pars_data(args, IO_paths, GUI_check):
         else:
             info = "INFO - Using auto contentmanager mode"
             write_to_log(info)
-            contextmanager, nrofcontextmanagers = get_contentmanagers_largest(args.input_path, args.output_path)
+            contextmanager, nrofcontextmanagers = get_contentmanagers_largest(args.input_path, IO_paths.report_folder)
 
             info = "INFO - Found " + str(nrofcontextmanagers) + " contentmanagers."
             write_to_log(info)
