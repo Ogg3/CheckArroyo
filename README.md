@@ -33,7 +33,7 @@ Arroyo\
 -i input file\
 -o outputfolder\
 -m mode. IOS = Iphone, AND = Android or ARY = arroyo.\
--s speed, S = check attachments, F = only check for text
+-c check attachments, Y(es) or N(o)
 
 Optional filters\
 -t1 time start -t2 time stop. Only display conversations within timespan\
