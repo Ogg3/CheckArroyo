@@ -273,17 +273,20 @@ def pars_data(args, IO_paths, GUI_check):
                 partCheck = False
                 write_to_log(info)
 
-                # Check if contentmanager is usable
-                info = "INFO - Checking " + str(contextmanager)
-                write_to_log(info)
-                count, Ccontentmanager, = check_contentmanager(os.path.abspath(args.output_path + "/" + contextmanager))
+            # Check if contentmanager is usable
+            info = "INFO - Checking " + str(contextmanager)
+            write_to_log(info)
+            count, Ccontentmanager, = check_contentmanager(os.path.abspath(IO_paths.report_folder + "/" + contextmanager))
 
-                if Ccontentmanager:
-                    info = "INFO - Check complete"
-                    write_to_log(info)
-                else:
-                    info = "WARNING - contentmanager did not pass checks"
-                    write_to_log(info)
+            if Ccontentmanager:
+                info = "INFO - Check complete"
+                content_check = True
+                write_to_log(info)
+            else:
+                info = "WARNING - contentmanager did not pass checks"
+                write_to_log(info)
+                content_check = False
+
 
         elif args.mode == 'AND':
             # Check if main.db is usable
@@ -312,6 +315,15 @@ def pars_data(args, IO_paths, GUI_check):
             write_to_log(info)
 
             count, Ccore, = check_core(os.path.abspath(CorePath))
+
+            if Ccore:
+                info = "INFO - Check complete"
+                content_check = True
+                write_to_log(info)
+            else:
+                info = "WARNING - core.db did not pass checks"
+                content_check = False
+                write_to_log(info)
 
 
     except Exception as e:
@@ -403,6 +415,15 @@ def pars_data(args, IO_paths, GUI_check):
                     else:
                         insert_message(database, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
                                        string_list, i[1], -1, i[7], i[8], args, IO_paths.report_time)
+                elif not content_check:
+                    sent_by_snapchat_id = i[16]
+                    # if a text message was found
+                    if ctype == 1:
+                        insert_message(database, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
+                                       string_list[0], i[1], -1, i[7], i[8], args, IO_paths.report_time)
+                    else:
+                        insert_message(database, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
+                                       string_list, i[1], -1, i[7], i[8], args, IO_paths.report_time)
                 # If mode is not arroyo
                 # If the checks for usernames did pass skip to next
                 # If the checks did not pass
@@ -446,7 +467,7 @@ def pars_data(args, IO_paths, GUI_check):
                                                i[7], i[8], args, IO_paths.report_time)
 
                 # Check if the attachment database checks passed
-                elif Ccontentmanager or Ccore:
+                elif content_check:
 
                     # Makes sure the username checks passed
                     if part != None and partCheck:
@@ -516,7 +537,7 @@ def pars_data(args, IO_paths, GUI_check):
     info = str(execute_time)+" (s)"
     write_to_log(info)
 
-    return [convons, execute_time, database, owner, part]
+    return [convons, execute_time, database, owner, partCheck]
 
 
 # Write report on findings
@@ -751,7 +772,7 @@ def writeHtmlReport(args):
                 conversation_id = i[0]
 
                 # Check if username is owner
-                if part != None:
+                if part:
                     if i[1] == owner:
                         sent_by_username = i[1]+" (OWNER)"
                     else:
@@ -780,7 +801,7 @@ def writeHtmlReport(args):
                     f.write(Start)
 
 #----------------------------------------Participants------------------------------------------------------------------
-                    if args.mode != "ARY" and part != None:
+                    if args.mode != "ARY" and part:
                         Table_Header1 = """
                             <tbody>
                                 <tr>
@@ -957,8 +978,9 @@ def writeHtmlReport(args):
                 """
             a.write(Table_Header1)
 
-            if part != None:
-            # Get participants of a chat from database
+            if part:
+
+                # Get participants of a chat from database
                 for username, snapchat_id in parties:
                     if username == owner:
                         username = username+" (OWNER)"
