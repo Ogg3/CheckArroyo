@@ -3,6 +3,8 @@ Snapchat parser for iPhone, Android and arroyo.db.
 
 The script creates a html report for every conversation ID that was found. The conversation is parsed to check for attachments such as snaps, media and audio messages, it also displays the participants of the chat.
 
+I recommend disabling the windows path limit. This might cause connection errors to databases
+
 CheckArroyo.py - run this in CLI\
 CheckArroyo_GUI.py - run this for GUI\
 parser3.py - decode protbuffers (from ALEAP)\
