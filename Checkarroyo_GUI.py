@@ -183,9 +183,9 @@ try:
 
         # Radio buttons to select speed
         tk.Label(window, text="Select one").grid(row=2, column=2, sticky=N + S + E + W)
-        chkat = Radiobutton(window, text="Don't Check for attachments", variable=speed, value="F")
+        chkat = Radiobutton(window, text="Don't Check for attachments", variable=speed, value="N")
         chkat.grid(row=3, column=2)
-        Dchkat = Radiobutton(window, text="Check for attachments", variable=speed, value="S")
+        Dchkat = Radiobutton(window, text="Check for attachments", variable=speed, value="Y")
         Dchkat.grid(row=4, column=2)
 
         # Radio buttons to select mode
@@ -194,11 +194,11 @@ try:
         IOS.grid(row=7, column=2)
         ARY = Radiobutton(window, text="Mode - Only Arroyo.db", variable=mode, value="ARY")
         ARY.grid(row=8, column=2)
-        AND = Radiobutton(window, text="Mode - Android (Coming soon)", variable=mode, value="AND")
+        AND = Radiobutton(window, text="Mode - Android", variable=mode, value="AND")
         AND.grid(row=9, column=2)
 
         # Set default value
-        speed.set("S")
+        speed.set("Y")
         mode.set("IOS")
 
         # Padding

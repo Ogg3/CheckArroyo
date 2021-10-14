@@ -3,13 +3,14 @@ github.com/Ogg3/CheckArroyo
 """
 
 import datetime
+
 import sqlite3
 import time
 import re
 from tkinter import *
 from zipfile import ZipFile
 from parse3 import *
-from datetime import datetime
+
 
 """
 Make a class to match the args.parser being used for CLI
@@ -17,7 +18,7 @@ Make a class to match the args.parser being used for CLI
 class GUI_args(object):
     input_path = None
     output_path = None
-    speed = None
+    check_attachmets = None
     mode = None
     time_start = None
     time_stop = None
@@ -28,13 +29,62 @@ class GUI_args(object):
     def __init__(self, input_path, output_path, speed, mode, time_start, time_stop, msg_id):
         self.input_path = input_path
         self.output_path = output_path
-        self.speed = speed
+        self.check_attachmets = speed
         self.mode = mode
         self.time_start = time_start
         self.time_stop = time_stop
         # self.contentmanager = contentmanager
         self.msg_id = msg_id
         #self.display_window = display_window
+
+
+"""
+Output class
+"""
+class IO_paths:
+
+    nl = '\n'
+    log_file = ""
+    report_folder = ""
+    report_file = ""
+    report_convos = ""
+    input_path = None
+    output_path = None
+    report_time = ""
+
+    def __init__(self, args):
+
+        # Create timestamp for when report was created
+        report_time = str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+        IO_paths.report_time = report_time
+        self.report_time = report_time
+        IO_paths.input_path = args.input_path
+
+        # Make base directory
+        os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + report_time)
+        IO_paths.report_folder = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\"
+
+        # Make conversation directory
+        os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "conversation-reports")
+
+        # Create report file
+        with open(args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "Report.html", "w") as a:
+            a.write("")
+
+        # Create log file
+        with open(args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "log.html", "w") as a:
+            a.write("")
+
+        self.log_file = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "log.html"
+        self.report_folder = args.output_path + "\\" + "CheckArroyo-report-" + report_time
+        self.report_file = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "Report.html"
+        self.report_convos = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "conversation-reports" + "\\"
+        self.input_path = args.input_path
+        self.output_path = args.output_path
+        IO_paths.log_file = os.path.abspath(args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "log.html")
+        IO_paths.report_file = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "Report.html"
+        IO_paths.report_convos = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "conversation-reports" + "\\"
+
 
 
 """
@@ -56,10 +106,12 @@ def check_ctype(int_ctype):
         # 4 is audio messages
         elif int_ctype == 4:
             return "Audio message"
+        elif int_ctype == 5:
+            return "Emoji"
         else:
             return "Content type " + str(int_ctype)
     else:
-        print("ERROR - lib.check_ctype excpects a int, not " + str(type(int_ctype)))
+        return "ERROR - scripts.check_ctype excpects a int, not " + str(type(int_ctype))
 
 
 """
@@ -75,8 +127,9 @@ def check_list_for_empty(lst):
 
 """
 Check zip file for contetntmanagers and return the path of the largest one
+returns None if no manager was found
 """
-def check_contentmanagers(input_path, output_path):
+def get_contentmanagers_largest(input_path, output_path):
     # Get the largest content manager
     def largets(content_managers):
         large = ""
@@ -102,20 +155,23 @@ def check_contentmanagers(input_path, output_path):
         y = 0
         for i in f.infolist():
 
-            if 'contentmanagerV3' in i.filename:
-                a = i.filename.split('/')
+            a = i.filename.split('/')
 
-                if a[len(a) - 1] == 'contentManagerDb.db':
-                    y = y + 1
-                    managers.append((i.filename, i.file_size / (1024 * 1024)))
+            if a[len(a) - 1] == 'contentManagerDb.db':
+                y = y + 1
+                managers.append((i.filename, i.file_size / (1024 * 1024)))
 
         # Check the size of content managers
         manager = largets(managers)
-        f.extract(manager[0], output_path)
-        f.close()
 
-        # return the manager that is gonna be used and the amount of content managers found
-        return manager[0], y
+        if manager != "":
+            f.extract(manager[0], output_path)
+            f.close()
+
+            # return the manager that is gonna be used and the amount of content managers found
+            return manager[0], y
+
+        return None
 
 
 """
@@ -135,7 +191,7 @@ def decode_string(proto_string, bin_string):
                 # Encode because reasons
                 tmp = i.encode('utf-8', 'ignore')
 
-                strings.append("".join(re.findall("[a-zA-Z0-9äöåÄÖÅ -:()=?&$%#\/]+", tmp.decode('utf-8', 'ignore'))))
+                strings.append("".join(re.findall("[a-zA-Z0-9äöåÄÖÅ -;:()=?&$%#\/]+", tmp.decode('utf-8', 'ignore'))))
     else:
         strings.append("".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore'))))
 
@@ -197,10 +253,13 @@ def check_time(msg, args):
         return True
 
 
-"""
-Check blobs for usernames in primary.docobjects
-"""
 def check_id_username(userid, pdpath):
+    """
+    Check blobs for usernames in primary.docobjects
+    :param userid:
+    :param pdpath:
+    :return:
+    """
     check = checkPD(userid, pdpath)
     if check != "":
         return check
@@ -222,25 +281,24 @@ def displayIOScontentmanagers(input_path, ouput_path):
         y = 0
         for i in f.infolist():
 
-            if 'contentmanagerV3' in i.filename:
-                a = i.filename.split('/')
+            a = i.filename.split('/')
 
-                if a[len(a) - 1] == 'contentManagerDb.db':
-                    # print(a)
-                    y = y + 1
-                    managers.append(i.filename)
-                    print(str(y) + " Name: " + i.filename)
-                    print("Size: " + str(i.file_size / (1024 * 1024)) + " MB")
-                    print()
+            if a[len(a) - 1] == 'contentManagerDb.db':
+                # print(a)
+                y = y + 1
+                managers.append(i.filename)
+                print(str(y) + " Name: " + i.filename)
+                print("Size: " + str(i.file_size / (1024 * 1024)) + " MB")
+                print()
 
         ret = input("Use content manager (1 - " + str(len(managers)) + "): ")
 
         if (int(ret) - 1) >= len(managers) or (int(ret) - 1) < 0:
             print("Error: Invalid choice")
             print()
-            displayIOScontentmanagers(input_path)
+            displayIOScontentmanagers(input_path, ouput_path)
 
-        f.extract(managers[int(ret) - 1], ouput_path)
+        f.extract(managers[int(ret) - 1], IO_paths.report_folder)
         f.close()
 
         return managers[int(ret) - 1]
@@ -276,14 +334,17 @@ def checkandextract(args, string, mode):
     if check is None:
         return None
     else:
-        effromzip(check[0], args)
-        return os.path.abspath(args.output_path + '/' + check[0])
+        effromzip(check[0])
+        return os.path.abspath(IO_paths.report_folder + '/' + check[0])
 
 
-"""
-Checks primary.docobjects for a hits on a id and returns the username
-"""
 def checkPD(pd, path):
+    """
+    Checks primary.docobjects for a hits on a id and returns the username
+    :param pd:
+    :param path:
+    :return:
+    """
     path = os.path.abspath(path)
 
     conn = sqlite3.connect(path)
@@ -325,14 +386,17 @@ def checkPD(pd, path):
     return check
 
 
-"""
-Check if time is in range
-"""
 def inRange(start, stop, time_check):
+    """
+    Check if time is in range
+    :param start:
+    :param stop:
+    :param time_check:
+    :return:
+    """
     if stop is not None and start is not None:
         start = conv2Time(start)
         stop = conv2Time(stop)
-        time_check = convTime(time_check)
         time_check = datetime.date(time_check.year, time_check.month, time_check.day)
 
         return start <= time_check <= stop
@@ -403,18 +467,9 @@ def conv2Time(time):
 
 
 """
-Convert Time
-"""
-def convTime(tim):
-    # UTC +0
-    tim = str(tim)
-    return datetime.datetime.utcfromtimestamp(int(tim[:10]))
-
-
-"""
 Gets a list of conversations ids
 """
-def getConv(conn, msg_id):
+def getConv(conn, msg_id, args, timea):
     try:
         # if msg_id is empty get all convos
         if msg_id == "":
@@ -443,7 +498,7 @@ def getConv(conn, msg_id):
 
         return conv
     except Exception as e:
-        print(e)
+        write_to_log(e)
         return
 
 
@@ -457,23 +512,21 @@ def readzip(zip):
 
         f.close()
     except Exception as e:
-        print(e)
+        write_to_log(e)
         return
 
 
 """
 Extract file from zip to path
 """
-def effromzip(file, args):
+def effromzip(file):
     try:
-        path = os.path.abspath(args.output_path)
-        with ZipFile(args.input_path, 'r') as f:
-            f.extract(file, path)
+        with ZipFile(IO_paths.input_path, 'r') as f:
+            f.extract(file, IO_paths.report_folder)
 
         f.close()
     except Exception as e:
-        print(e)
-        #write_to_log(args, timea, e)
+        write_to_log(e)
         return
 
 
@@ -485,8 +538,7 @@ def readfromzip(zip, file):
         with ZipFile(zip, 'r') as f:
             return f.read(file)
     except Exception as e:
-        print(e)
-        #write_to_log(args, timea, e)
+        write_to_log(e)
         return
 
 
@@ -495,27 +547,26 @@ Check keys with proto strings
 Contentmanager is the queryed for the string and checked if there is a hit
 Returns a list of tupels where the tupels are (key, path_to_image)
 """
-def check_keys_proto(args, files, con, proto_string):
+def check_keys_proto_iPhone(args, files, con, proto_string, timea):
 
     match = []
 
     # Connect to database
-    path = os.path.abspath(args.output_path + "/" + con)
+    path = os.path.abspath(IO_paths.report_folder + "/" + con)
     try:
         conn = sqlite3.connect(path)
     except Exception as e:
-        print("ERROR - Could not connect to: " + str(args.output_path + "/" + str(con)))
-        print(e)
+        write_to_log("ERROR - Could not connect to: " + str(IO_paths.report_folder + "/" + str(con)))
+        write_to_log(e)
         return
 
     # Get the key row from CONTENT_OBJECT_TABLE
-    key = check_contentmangaredb(args, con)
+    key = get_contentmangaredb_key(path)
 
     # Check output
     if key == None:
         errorstring = "ERROR - Could not find key row in contentmanager. Check the database for changes."
-        #write_to_log(errorstring)
-        print(errorstring)
+        write_to_log(errorstring)
         return
 
     # Can be more then one key
@@ -552,31 +603,89 @@ def check_keys_proto(args, files, con, proto_string):
 
                         # Check if file is a key
                         if string in filename:
-                            print("RARE - Found a key that is a file: " + str(string))
+                            info = "RARE - Found a key that is a file: " + str(string)
+                            write_to_log(info)
 
             except Exception as e:
                 errorstring = "ERROR - Could not check key " + str(string) + " using " + qr + " " + str(e)
-                #write_to_log(errorstring)
-                print(errorstring)
-                return
+                write_to_log(errorstring)
+
+    return match
+
+"""
+Check keys with proto strings
+Contentmanager is the queryed for the string and checked if there is a hit
+Returns a list of tupels where the tupels are (key, path_to_image)
+"""
+def check_keys_proto_Android(args, files, con, proto_string, timea):
+
+    match = []
+
+    # Connect to database
+    path = os.path.abspath(con)
+    try:
+        conn = sqlite3.connect(path)
+    except Exception as e:
+        write_to_log("ERROR - Could not connect to: " + str(con))
+        write_to_log(e)
+        return
+
+    # Can be more then one key
+    for string in proto_string:
+
+        # Check length of key
+        if len(string) > 15:
+            # Old version used KEY now its CONTENT_KEY
+            try:
+                # Check if KEY table can be used
+                qr = "SELECT contentObjectId, cacheKey FROM DataConsumption WHERE contentObjectId LIKE '%" + string + "%'"
+                curs = conn.execute(qr)
+
+                # Loop through query
+                for res in curs:
+                    key = res[0]
+                    cacheName = res[1]
+
+                    # Check if query is empty
+                    if string == ():
+                        return False
+                    # print('INFO - Found key in core: '+str(res))
+                    # For all files
+                    for name in files:
+
+                        # Get only the file name
+                        filename = name.split('/')[len(name.split('/')) - 1]
+
+                        # If a filename can be found in the blob add it in a tuple to matching list
+                        if cacheName in filename:
+                            print('INFO - Found link with key and file'+str(res))
+                            match.append((string, name))
+
+                        # Check if file is a key
+                        if string in filename:
+                            info = "RARE - Found a key that is a file: " + str(string)
+                            write_to_log(info)
+
+            except Exception as e:
+                errorstring = "ERROR - Could not check key " + str(string) + " using " + qr + " " + str(e)
+                write_to_log(errorstring)
 
     return match
 
 
 """
 Returns unparsed structure of a database
+returns a array with the result of a query
 """
-def get_database_struct(args, database):
+def get_database_struct(database):
 
     ret = []
 
-    # Connect to database
-    path = os.path.abspath(args.output_path + "/" + database)
     try:
-        conn = sqlite3.connect(path)
-    except Exception as e:
-        print("ERROR - Could not connect to: ")
-        print(e)
+        conn = sqlite3.connect(database)
+    except:
+        errorstring = "ERROR - Could not connect to: " + database
+        write_to_log(errorstring)
         return
 
     qr = "SELECT sql FROM sqlite_master"
@@ -590,11 +699,13 @@ def get_database_struct(args, database):
 
 
 """
-Checks the contentmanager.db structure and returns what kind of key is being used
+Checks the contentmanager.db structure
+returns what kind of key is being used
+return None if no key was found
 """
-def check_contentmangaredb(args, database):
+def get_contentmangaredb_key(database):
 
-    sqlmaster = get_database_struct(args, database)
+    sqlmaster = get_database_struct(database)
 
     # Go through sql structure
     for i in sqlmaster:
@@ -609,10 +720,14 @@ def check_contentmangaredb(args, database):
     return None
 
 
-"""
-
-"""
 def check_participants(convID, conn, PDpath):
+    """
+    test
+    :param convID:Conversation id
+    :param conn:sqlite3 connection to the primary.docobjects
+    :param PDpath:Full path to where the primary.docobjects is stored
+    :return:List of tuples (username, snapchat ID)
+    """
     try:
         part = []
 
@@ -636,14 +751,77 @@ def check_participants(convID, conn, PDpath):
         return part
     except Exception as e:
         errorstring = "ERROR - Could not check participants for " + str(convID) + " using " + PDpath + " " + str(e)
-        #write_to_log(errorstring)
-        print(errorstring)
+        write_to_log(errorstring)
 
 
-"""
-Set up database to store data while its being parsed
-"""
+def check_participants_android(convID, conn, MainPath):
+    """
+    Links together usernames and snapchat IDs to a specific conversation
+    :param convID:conversation ID
+    :param conn:Connection to arroyo.db
+    :param MainPath:path to main.db
+    :return: List of tuples (username, snapchat ID)
+    """
+    try:
+
+        part = []
+
+        # query who is participating in conv
+        qr = "SELECT * FROM user_conversation WHERE client_conversation_id == '%s'" % convID
+
+        curs1 = conn.execute(qr)
+
+        for j in curs1:
+
+            # Check if username can be found
+            checkU = checkPD_android(j[0], MainPath)
+
+            if checkU != False:
+                id = checkU, j[0]
+            else:
+                id = j[0]
+
+            part.append(id)
+
+        return part
+    except Exception as e:
+        errorstring = "ERROR - Could not check participants for " + str(convID) + " using " + MainPath + " " + str(e)
+        write_to_log(errorstring)
+
+
+def checkPD_android(snapchatID, MainPath):
+    """
+    Links together a snapchatID with a username
+    :param snapchatID:String
+    :param MainPath:path to main.db
+    :return:
+    """
+    try:
+        conn = sqlite3.connect(MainPath)
+
+        part = []
+
+        # query who is participating in conv
+        qr = "SELECT username, userId FROM Friend WHERE userId == '%s'" % snapchatID
+
+        curs1 = conn.execute(qr)
+
+        for j in curs1:
+            part.append(j[0])
+
+        return part
+
+    except Exception as e:
+        errorstring = "ERROR - Could not find user " + str(snapchatID) + " using " + MainPath + " " + str(e)
+        write_to_log(errorstring)
+
+
 def create_store_data(database):
+    """
+    Set up database to store data while its being parsed
+    :param database:
+    :return:
+    """
     # [id] INTEGER PRIMARY KEY,
     conn = sqlite3.connect(database)
 
@@ -659,16 +837,23 @@ def create_store_data(database):
 
     conn.execute('''
               CREATE TABLE IF NOT EXISTS messages_attachments
-              ( [Attachments_id] INTEGER, [filename] TEXT, [contentmangare_key] TEXT)
+              ( [Attachments_id] INTEGER, [filename] TEXT, [contentmangare_key] TEXT, [file_type] TEXT)
               ''')
 
     conn.commit()
 
 
-"""
-Insert the participants of a chat to data_store.db
-"""
-def insert_participants(database, Conversation, username, snapchat_id):
+def insert_participants(database, Conversation, username, snapchat_id, args, timea):
+    """
+    Insert the participants of a chat to data_store.db
+    :param database:
+    :param Conversation:
+    :param username:
+    :param snapchat_id:
+    :param args:
+    :param timea:
+    :return:
+    """
     try:
         conn = sqlite3.connect(database)
         c = conn.cursor()
@@ -678,49 +863,72 @@ def insert_participants(database, Conversation, username, snapchat_id):
         conn.commit()
     except Exception as e:
         errorstring = "ERROR - Could not insert " + str(qr) + " to store_data.db." + str(e)
-        #write_to_log(errorstring)
-        print(errorstring)
+        write_to_log(errorstring)
 
 
-"""
-Insert the message of a chat to data_store.db
-"""
 def insert_message(database, Conversation_id, sent_by_username, sent_by_snapchat_id, Content_type, Message_decoded,
-                   Message_encoded, Attachments_id, Timestamp_sent, Timestamp_recived):
+                   Message_encoded, Attachments_id, Timestamp_sent, Timestamp_recived, args, timea):
+    """
+    Insert the message of a chat to data_store.db
+    :param database:
+    :param Conversation_id:
+    :param sent_by_username:
+    :param sent_by_snapchat_id:
+    :param Content_type:
+    :param Message_decoded:
+    :param Message_encoded:
+    :param Attachments_id:
+    :param Timestamp_sent:
+    :param Timestamp_recived:
+    :param args:
+    :param timea:
+    :return:
+    """
     try:
         conn = sqlite3.connect(database)
         qr = 'INSERT INTO messages VALUES("' + str(Conversation_id) + '", "' + str(sent_by_username) + '", "' + str(
             sent_by_snapchat_id) + '", "' + str(Content_type) + '", "' + str(Message_decoded) + '", "' + str(
             Message_encoded) + '", "' + str(Attachments_id) + '", "' + str(Timestamp_sent) + '", "' + str(
             Timestamp_recived) + '")'
-        conn.execute(qr)
+        conn.execute('INSERT INTO messages VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)', (str(Conversation_id), str(sent_by_username), str(
+            sent_by_snapchat_id), str(Content_type), str(Message_decoded), str(
+            Message_encoded), str(Attachments_id), str(Timestamp_sent), str(
+            Timestamp_recived)))
         conn.commit()
     except Exception as e:
         errorstring = "ERROR - Could not insert " + str(qr) + " to store_data.db." + str(e)
-        #write_to_log(errorstring)
-        print(errorstring)
+        write_to_log(errorstring)
 
 
-"""
-Insert the attachment filename of a chat to data_store.db
-"""
-def insert_attachment(database, Attachments_id, filename, contentmangare_key):
+def insert_attachment(database, Attachments_id, filename, contentmangare_key, file_type, args, timea):
+    """
+    Insert the attachment filename of a chat to data_store.db
+    :param database:
+    :param Attachments_id:
+    :param filename:
+    :param contentmangare_key:
+    :param file_type:
+    :param args:
+    :param timea:
+    :return:
+    """
     try:
         conn = sqlite3.connect(database)
         qr = 'INSERT INTO messages_attachments VALUES("' + str(Attachments_id) + '", "' + str(filename) + '", "' + str(
-            contentmangare_key) + '")'
+            contentmangare_key) + '", "' + str(file_type) + '")'
         conn.execute(qr)
         conn.commit()
     except Exception as e:
         errorstring = "ERROR - Could not insert "+str(qr)+" to store_data.db." + str(e)
-        #write_to_log(errorstring)
-        print(errorstring)
+        write_to_log(errorstring)
 
 
-"""
-Check if file is a database
-"""
 def check_database(filename):
+    """
+    Check if file is a database
+    :param filename:
+    :return:
+    """
     conn = sqlite3.connect(filename)
     c = conn.cursor()
     result = c.execute("SELECT sql FROM sqlite_master")
@@ -731,10 +939,13 @@ def check_database(filename):
             return True
 
 
-"""
-Retrieves the username and snapchat id for a every participant of a conversation
-"""
 def get_participants(database, conversation_id):
+    """
+    Retrieves the username and snapchat id for a every participant of a conversation
+    :param database:
+    :param conversation_id:
+    :return:
+    """
     ret = []
 
     conn = sqlite3.connect(database)
@@ -747,14 +958,17 @@ def get_participants(database, conversation_id):
     return ret
 
 
-"""
-Retrieves the filename for a specific id
-"""
 def get_attachments(database, attachments_id):
+    """
+    Retrieves the filename for a specific id
+    :param database:
+    :param attachments_id:
+    :return:
+    """
     ret = []
 
     conn = sqlite3.connect(database)
-    qr = 'SELECT filename FROM messages_attachments WHERE Attachments_id =="%s"' % attachments_id
+    qr = 'SELECT filename, file_type FROM messages_attachments WHERE Attachments_id =="%s"' % attachments_id
     curs = conn.execute(qr)
 
     for res in curs:
@@ -763,10 +977,14 @@ def get_attachments(database, attachments_id):
     return ret
 
 
-"""
-Get the timestamp for a specifik message and convert it to localtime of the computers settings
-"""
 def get_timestamp(database, Message_og_id, timestamp_sent):
+    """
+    Get the timestamp for a specifik message and convert it to localtime of the computers settings
+    :param database:
+    :param Message_og_id:
+    :param timestamp_sent:
+    :return:
+    """
     ret = []
 
     conn = sqlite3.connect(database)
@@ -815,7 +1033,7 @@ def get_owner(database):
 """
 Get all users and GUIDs
 """
-def export_users(args, timea, database):
+def export_users(database):
     ret = []
     users = []
 
@@ -836,7 +1054,7 @@ def export_users(args, timea, database):
             users.append((username, snapchat_id))
 
     # Write contacts to file file
-    with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "contacts.txt", "w") as a:
+    with open(IO_paths.report_folder + "contacts.txt", "w") as a:
         for username, snapchat_id in users:
             a.write(username + ", " + snapchat_id + "\n")
 
@@ -844,6 +1062,240 @@ def export_users(args, timea, database):
 """
 Write to log file
 """
-def write_to_log(args, timea, msg):
-    with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "log.txt", "a") as a:
-        a.write(str(datetime.now()) + " " + msg + "\n")
+def write_to_log(message):
+    with open(IO_paths.log_file, 'a') as f:
+        print(message)
+        f.write(str(message) + '<br>' + IO_paths.nl)
+
+
+"""
+Checks the given contentmanagers structure
+returns True if its usable or False if not
+"""
+def check_contentmanager(database):
+
+    try:
+        table_exists(database, 'CONTENT_OBJECT_TABLE')
+        key = get_contentmangaredb_key(database)
+        count = row_exists_count(database, 'CONTENT_OBJECT_TABLE', key)
+        return count, True
+    except:
+        return 0, False
+
+
+"""
+Checks the given arroyo.db file structure
+returns True if its usable or False if not
+"""
+def check_arroyo(database):
+    try:
+        if table_exists(database, 'conversation_message') != 1:
+            return 0, False
+        if table_exists(database, 'conversation') != 1:
+            return 0, False
+
+        count = row_exists_count(database, 'conversation_message', 'client_conversation_id')
+        row_exists_count(database, 'conversation', 'client_conversation_id')
+        return count, True
+    except:
+        return 0, False
+
+
+
+"""
+Checks the given check_primary.docobjects file structure
+returns True if its usable or False if not
+"""
+def check_primarydocobjects(database):
+    try:
+        if table_exists(database, 'snapchatter') != 1:
+            return 0,0,False
+
+        write_to_log("INFO - Found snapchatter")
+        if table_exists(database, 'index_snapchatterusername') != 1:
+            return 0,0,False
+
+        write_to_log("INFO - Found index_snapchatterusername")
+
+        count_usersnames = row_exists_count(database, 'snapchatter', 'userId')
+        write_to_log("INFO - Found " + str(count_usersnames) + " users")
+
+        count_usernames_raw = row_exists_count(database, 'index_snapchatterusername', 'username')
+
+        write_to_log("INFO - Found " + str(count_usernames_raw) + " raw users")
+        return count_usersnames, count_usernames_raw, True
+    except:
+        return 0, 0, False
+
+
+"""
+Checks the given main.db file structure (Android)
+returns True if its usable or False if not
+"""
+def check_main_db(database):
+    try:
+        if table_exists(database, 'Friend') != 1:
+            write_to_log("ERROR - Could not find table: friend")
+            return 0, False
+
+        write_to_log("INFO - Found friend")
+
+        count_usernames = row_exists_count(database, 'Friend', 'username')
+
+        write_to_log("INFO - Found " + str(count_usernames) + " users")
+
+        count_userIds = row_exists_count(database, 'Friend', 'userId')
+
+        write_to_log("INFO - Found " + str(count_userIds) + " users IDs")
+
+        if count_usernames > 0:
+            return count_usernames, True
+        else:
+            return 0, False
+    except:
+        return 0, False
+
+
+"""
+Runs database query
+returns a array with the result
+returns None if connection fails
+"""
+def qurey_database(database, qr):
+
+    ret = []
+
+    try:
+        conn = sqlite3.connect(database)
+    except:
+        errorstring = "ERROR - Could not connect to: " + database
+        write_to_log(errorstring)
+        return
+
+    curs = conn.execute(qr)
+
+    for i in curs:
+        ret.append(i)
+
+    return ret
+
+
+"""
+Checks if table exists in database
+returns 1 if exists
+returns 0 if not exists
+"""
+def table_exists(database, name):
+
+    try:
+        conn = sqlite3.connect(database)
+    except:
+        errorstring = "ERROR - Could not connect to: " + database
+        write_to_log(errorstring)
+        return
+
+    qr = '''SELECT count(name) FROM sqlite_master WHERE type='table' AND name='%s' ''' % name
+
+    curs = conn.execute(qr)
+
+    for i in curs:
+        return i[0]
+
+
+def row_exists_count(database, table, name):
+    """
+    Checks a given database for a name in a table
+    returns the number of rows if name and table was found
+    Else returns 0
+    :param database:
+    :param table:
+    :param name:
+    :return: 0 if none or the amount of rows
+    """
+
+    try:
+        conn = sqlite3.connect(database)
+    except:
+        errorstring = "ERROR - Could not connect to: " + database
+        write_to_log(errorstring)
+        return 0
+
+    qr = '''SELECT count(%s) FROM %s ''' % (name, table)
+
+    try:
+        curs = conn.execute(qr)
+
+        for i in curs:
+            return i[0]
+
+    except Exception as e:
+        write_to_log(e)
+        return 0
+
+
+"""
+Reads in a file and gets the file header
+returns string with type of file
+"""
+def get_file_header(file):
+
+    def test():
+        for root, dirs, files in os.walk("../../test_data"):
+            for file in files:
+                print(get_file_header(os.path.join(root, file)))
+
+    with open(file, "rb") as f:
+        header = f.read(10)
+
+        # JPG
+        if header[6:] == b"JFIF":
+            return "PIC"
+        # PNG
+        elif header[1:4] == b"PNG":
+            return "PIC"
+        # ?MP4?
+        elif header[4:] == b"ftypmp":
+            return "MOV"
+        elif header[:4] == b"RIFF":
+            return "PIC"
+        elif header[:1] == b"\n" and header[2:8] == b"media~":
+            return "CONTROL FILE"
+        elif header == b"":
+            return "EMPTY"
+        else:
+            #print(header[:1], header[2:8])
+            errorstring = "ERROR - Unable to determine file typ for: "+str(file)
+            write_to_log(errorstring)
+            write_to_log(str(header))
+
+
+def check_core(database):
+    """
+
+    :param database:
+    :return:
+    """
+    try:
+        if table_exists(database, 'DataConsumption') != 1:
+            write_to_log("ERROR - Could not find table: DataConsumption")
+            return 0, False
+
+        write_to_log("INFO - Found DataConsumption")
+        rows = row_exists_count(database, 'DataConsumption', 'contentObjectId')
+        if rows == 0:
+            write_to_log("ERROR - Could not find row: contentObjectId")
+            return 0, False
+
+        write_to_log("INFO - Found contentObjectId")
+
+        if row_exists_count(database, 'DataConsumption', 'cacheKey') == 0:
+            write_to_log("ERROR - Could not find row: cacheKey")
+            return 0, False
+
+        write_to_log("INFO - Found cacheKey")
+        return rows, True
+
+
+    except Exception as e:
+        write_to_log(e)
+        return 0, False
