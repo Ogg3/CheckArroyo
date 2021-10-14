@@ -40,9 +40,9 @@ Optional filters\
 -msg filter for a specific conversation ID
 
 ## Exapmles
-Example: CheckArroyo.py -i ZIPFILE -o OUTPUTFOLDER -m IOS -s S
-Example: CheckArroyo.py -i arroyo.db -o OUTPUTFOLDER -m IOS
-Example: CheckArroyo.py -i ZIPFILE -o OUTPUTFOLDER -m IOS -s S -t1 2021-01-01 -t2 2021-02-02 -msg ID_HERE
+Example: CheckArroyo.py -i ZIPFILE -o OUTPUTFOLDER -m IOS -c Y\
+Example: CheckArroyo.py -i arroyo.db -o OUTPUTFOLDER -m IOS\
+Example: CheckArroyo.py -i ZIPFILE -o OUTPUTFOLDER -m IOS -c Y -t1 2021-01-01 -t2 2021-02-02 -msg ID_HERE
 
 # Tips
 
