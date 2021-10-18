@@ -1,1 +1,2 @@
-Finishing up for new release
+reworking how the script works in Linux (it doesnt)
+Clean up parse_data
