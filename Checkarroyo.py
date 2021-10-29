@@ -476,7 +476,7 @@ def pars_data(args, IO_paths, GUI_check):
                             checkU = checkPD(i[16], PDpath)
                         elif args.mode == "AND":
                             checkU = checkPD_android(i[16], MainPath)
-                        check_id_username(i[16], PDpath)
+                        
 
                         # If no username can be linked
                         if checkU != False:
