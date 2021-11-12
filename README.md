@@ -10,8 +10,6 @@ CheckArroyo_GUI.py - run this for GUI\
 parser3.py - decode protbuffers (from ALEAP)\
 lib.py - help functions
 
-First project on github :D
-
 # Usage
 
 Requirments: Python 3.9
@@ -41,13 +39,10 @@ Optional filters\
 -t1 time start -t2 time stop. Only display conversations within timespan\
 -msg filter for a specific conversation ID
 
-## Exapmles
-Example: CheckArroyo.py -i ZIPFILE -o OUTPUTFOLDER -m IOS -c Y\
-Example: CheckArroyo.py -i arroyo.db -o OUTPUTFOLDER -m IOS\
-Example: CheckArroyo.py -i ZIPFILE -o OUTPUTFOLDER -m IOS -c Y -t1 2021-01-01 -t2 2021-02-02 -msg ID_HERE
+## Examples
+Example: CheckArroyo.py -i C:\zipfile.zip -o C:\output -m IOS -c Y\
+Example: CheckArroyo.py -i arroyo.db -o OUTPUTFOLDER -m ARY\
+Example: CheckArroyo.py -i C:\zipfile.zip -o C:\output -m AND -c Y -t1 2021-01-01 -t2 2021-02-02 -msg ID_HERE
 
 # Tips
-
-I recomend using something like AXIOM to parse the conversation if you just want text messages, its much easier to read than in my HTML reports.\
-
-Check out the wiki for more info :)
+Check out the wiki for more info on how it works
