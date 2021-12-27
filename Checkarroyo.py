@@ -1,14 +1,12 @@
 """
-Version 0-6-0
 github.com/Ogg3/CheckArroyo
 """
 import argparse
-import time
+import webbrowser
+from iPhone_funcs import *
+from android_funcs import *
+import sqlite3
 
-from lib import *
-
-
-# Main
 def main():
     parser = argparse.ArgumentParser(description='CheckArroyo: Snapchat chat parser.')
 
@@ -17,8 +15,8 @@ def main():
     parser.add_argument('-o', '--output_path', required=False, action="store", help='Output folder path.')
     parser.add_argument('-m', '--mode', required=False, action="store",
                         help='Select mode, IOS - iPhone, AND - Android, ARY - only arroyo')
-    parser.add_argument('-s', '--speed', required=False, action="store",
-                        help='Select speed, F - fast, M - medium, S - slow')
+    parser.add_argument('-c', '--check_attachmets', required=False, action="store",
+                        help='Select if attachments should be checked; Y (Yes) or N (No)')
     parser.add_argument('-t1', '--time_start', required=False, action="store", help='Time range start. Ex: 2021-01-01')
     parser.add_argument('-t2', '--time_stop', required=False, action="store", help='Time range stop. Ex: 2021-01-01')
     parser.add_argument('-msg', '--msg_id', required=False, action="store",
@@ -53,11 +51,39 @@ def main():
             return
 
         # Write html report while finding content
-        writeHtmlReport(args)
+        try:
+            writeHtmlReport(args)
+        except Exception as e:
+            write_to_log(e)
 
     # Android mode
     elif args.mode == "AND":
-        pass
+        # Check so paths exists
+        if args.output_path is None:
+            parser.error('No OUTPUT folder path provided')
+            return
+        else:
+            output_path = os.path.abspath(args.output_path)
+        if output_path is None:
+            parser.error('No OUTPUT folder selected. Run the program again.')
+            return
+        if input_path is None:
+            parser.error('No INPUT file. Run the program again.')
+            return
+        else:
+            input_path = os.path.abspath(args.input_path)
+        if not os.path.exists(input_path):
+            parser.error('INPUT file does not exist! Run the program again.')
+            return
+        if not os.path.exists(output_path):
+            parser.error('OUTPUT folder does not exist! Run the program again.')
+            return
+
+        # Write html report while finding content
+        try:
+            writeHtmlReport(args)
+        except Exception as e:
+            write_to_log(e)
 
     # If only arroyo database if available
     elif args.mode == "ARY":
@@ -84,149 +110,227 @@ def main():
             return
 
         # Write html report while finding content
-        writeHtmlReport(input_path, output_path, args)
+        try:
+            writeHtmlReport(args)
+        except Exception as e:
+            write_to_log(e)
 
     # If no mode selected
     else:
         parser.error('No mode selected.')
 
 
-"""
-0-speed, 
-1-mode, 
-2-debug, 
-3-time_start, 
-4-time_stop, 
-5-contentmanager, 
-6-msg_id
-"""
 
-# Store data in database
-def store_data(args):
+def pars_data(args, IO_paths, GUI_check):
+    """
+    0-speed,
+    1-mode,
+    2-debug,
+    3-time_start,
+    4-time_stop,
+    5-contentmanager,
+    6-msg_id
+    """
+
+    # Connect to database
+    store_data = args.output_path + "\\" + "CheckArroyo-report-" + IO_paths.report_time + "\\" + "store_data.db"
 
     # Create database to store data
-    create_store_data()
+    create_store_data(store_data)
 
     # Start execute timer
     start_time = time.time()
 
-    # Check if user is using gui
-    GUI_check = False
-    # Check if CLI or GUI
-    try:
-        a = args[0]
-        GUI_check = True
-        args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
-        print("INFO - Using GUI")
-        write_to_tex(["INFO - Using GUI"], args.display_window)
-    except:
-        print("INFO - Using CLI")
-        pass
+
+    def arroyo_mode(args, IO_paths, GUI_check, store_data):
+        """
+
+        :param args:
+        :param IO_paths:
+        :param GUI_check:
+        :return:
+        """
+        info = "INFO - Using arroyo.db mode"
+        write_to_log(info)
+        arroyo = args.input_path
+
+        # Check important files
+        try:
+            conn_arroyo = sqlite3.connect(arroyo)
+
+            # Check if arroyo is usable
+            info = "INFO - Checking " + str(arroyo)
+            write_to_log(info)
+            messages_count, Carroyo = check_arroyo(arroyo)
+
+            if Carroyo:
+                info = "INFO - Check complete"
+                write_to_log(info)
+            else:
+                info = "WARNING - arroyo did not pass checks"
+                write_to_log(info)
+
+                info = "INFO - Exiting"
+                write_to_log(info)
+
+                return
+        except Exception as e:
+            error = "ERROR - Checks Failed, one or more database is unusable" + str(
+                traceback.format_exc() + "\n" + e.__doc__)
+            write_to_log(error)
+            return "ERROR"
+
+        convons = getConv(conn_arroyo, args.msg_id, args, IO_paths.report_time)
+
+        if args.msg_id is not None:
+            info = "INFO - Filtering for " + args.msg_id
+            write_to_log(info)
+
+        info = "INFO - Found conversations " + str(convons)
+        write_to_log(info)
+
+        # Set var
+        attachment_id = 0
+        nr = 0
+
+        info = "INFO - Parsing messages"
+        write_to_log(info)
+
+        # For every conversation
+        for conv_id in convons:
+
+            # Get a conversation
+            qr = "SELECT * FROM 'conversation_message' WHERE client_conversation_id LIKE '%s' ORDER BY creation_timestamp ASC" % conv_id
+            curs = conn_arroyo.execute(qr)
+
+            # Write participants only once
+            check = True
+
+            # Go through database query
+            for i in curs:
+                nr = nr + 1
+                print("\rParsed " + str(nr) + " out of " + str(messages_count) + " messages\n", flush=True, end='')
+
+                raw_timestamp = i[7]
+
+                # Check if time filter is applied
+                res = check_time(raw_timestamp, args)
+
+                # Content type
+                ctype = i[13]
+                ctype_string = check_ctype(i[13])
+
+                # Check for content type and decode
+                proto_string = proto_to_msg(i[5])
+                string_list = decode_string(proto_string, i[5])
+
+                # Check time flag
+                if res:
+
+                    sent_by_snapchat_id = i[16]
+                    # if a text message was found
+                    if ctype == 1:
+                        insert_message(store_data, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
+                                       string_list[0], i[1], -1, i[7], i[8], args, IO_paths.report_time)
+                    else:
+                        insert_message(store_data, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
+                                       string_list, i[1], -1, i[7], i[8], args, IO_paths.report_time)
+
+        print()
+        info = "INFO - Parsing complete"
+        write_to_log(info)
+
+        execute_time = (time.time() - start_time)
+        info = str(execute_time) + " (s)"
+        write_to_log(info)
+
+        return [convons, execute_time, store_data, owner, partCheck]
 
     # Iphone mode
     if args.mode == "IOS":
-        write_to_tex(["INFO - Using IOS mode"], args.display_window)
-        print("INFO - Using IOS mode")
-
-        # Extract arroyo and perform checks
-        arroyo = checkandextract(args, 'arroyo.db', "file")
-
-        # Check if file exist
-        if arroyo is None:
-            write_to_tex(["ERROR - Could not find arroyo."], args.display_window)
-            print("ERROR - Could not find arroyo.")
-            return
-
-        if not GUI_check:
-            contextmanager = displayIOScontentmanagers(args.input_path, args.output_path)
-            print("INFO - Using auto contentmanager mode")
-        else:
-            write_to_tex(["INFO - Using auto contentmanager mode"], args.display_window)
-            contextmanager, nrofcontextmanagers = check_contentmanagers(args.input_path, args.output_path)
-
-        if contextmanager is None:
-            print("ERROR - Could not find contentmanager.")
-            return
-        print("INFO - Found " + str(nrofcontextmanagers) + " contentmanagers.")
-        print("INFO - Using " + str(contextmanager) + ".")
-        write_to_tex(["INFO - Found " + str(nrofcontextmanagers) + " contentmanagers."], args.display_window)
-        write_to_tex(["INFO - Using " + str(contextmanager) + "."], args.display_window)
-
-        PDpath = checkandextract(args, 'primary.docobjects', "file")
-        if PDpath is None:
-            print("ERROR - Could not find PDpath.")
-            return
-
-        print("INFO - Using " + PDpath + " as primary.docobjects")
-        write_to_tex(["INFO - Using " + PDpath + " as primary.docobjects"], args.display_window)
-
-        files = ""
-
-        if args.speed == "S":
-            # Make a list of files in com.snap.file_manager_
-            files = checkinzip(args, 'com.snap.file_manager_', "path")
-            print("INFO - Checking for attachments")
-            write_to_tex(["INFO - Checking for attachments"], args.display_window)
-        else:
-            print("INFO - NOT checking for attachments")
-            write_to_tex(["INFO - NOT checking for attachments"], args.display_window)
+        return iPhone_mode(args, IO_paths, GUI_check, store_data, start_time)
 
     # Android mode
     elif args.mode == "AND":
-        pass
+        return android_mode(args, IO_paths, GUI_check, store_data)
 
     # Only arroyo mode
     elif args.mode == "ARY":
-        print("INFO - User is using arroyo.db mode")
-        write_to_tex(["INFO - User is using arroyo.db mode"], args.display_window)
-        arroyo = args.input_path
-
-    # Create timestamp for when report was created
-    timea = str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
-
-    print("INFO - Connecting to " + arroyo)
-    write_to_tex(["INFO - Connecting to " + arroyo], args.display_window)
-
-    conn = sqlite3.connect(arroyo)
+        return arroyo_mode(args, IO_paths, GUI_check, store_data)
 
 
 # Write report on findings
 def writeHtmlReport(args):
 
+    # Check if user is using gui
+    GUI_check = False
+    user_mode = ""
+    # Check if CLI or GUI
+    try:
+        a = args[0]
+        GUI_check = True
+        args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6])
+        info = "INFO - Using GUI"
+    except:
+        try:
+            a = args['inputfile']
+            GUI_check = True
+            if args['IOS']:
+                mode = 'IOS'
+            elif args['AND']:
+                mode = 'AND'
+            elif args['ARY']:
+                mode = 'ARY'
+            if args['S']:
+                attachment = 'S'
+            elif args['F']:
+                attachment = 'F'
 
-    # Make base directory
-    os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + timea)
+            if args['-time_start-'] == "" and args['-time_stop-'] == "":
+                args['-time_start-'] = None
+                args['-time_stop-'] = None
 
-    # Make conversation directory
-    os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "conversation-reports")
+            if args['msg_id'] == "":
+                args['msg_id'] = None
 
-    msg = 0
-    Attatchments = 0
-    
-    convons = getConv(conn, args.msg_id)
+            args = GUI_args(args['inputfile'], args['outputfolder'], attachment, mode, args['-time_start-'], args['-time_stop-'], args['msg_id'])
+            info = "INFO - Using new GUI"
+        except:
+            info = "INFO - Using CLI"
 
-    if GUI_check and args.msg_id != "":
-        print("INFO - Filtering for " + args.msg_id)
-        write_to_tex(["INFO - Filtering for " + args.msg_id], args.display_window)
-    elif not GUI_check and args.msg_id is not None:
-        print("INFO - Filtering for " + args.msg_id)
-        write_to_tex(["INFO - Filtering for " + args.msg_id], args.display_window)
+    output = IO_paths(args)
+    write_to_log(info)
 
-    print("INFO - Found conversations " + str(convons))
-    write_to_tex(["INFO - Found conversations " + str(convons)], args.display_window)
+    # Pars data and store in database
+    data = pars_data(args, output, GUI_check)
+    if data != "ERROR":
+        parsde_data = data[0]
+        execute_time = data[1]
+        database = data[2]
+        owner = data[3]
+        part = data[4]
+    else:
+        return None
 
+    # Export contacts
+    export_users(database)
 
-    print("INFO - Writing html reports")
-    write_to_tex(["INFO - Writing html reports"], args.display_window)
+    # Connect to stored data
+    conn = sqlite3.connect(database)
+
+    info = "INFO - Writing html reports"
+    write_to_log(info)
 
     # For every conversation
-    for x in convons:
-        print('INFO - writing conversation: ' + x)
-        write_to_tex(['\rINFO - writing conversation: ' + x], args.display_window)
+    for x in parsde_data:
+        msg = 0
+        Attatchments = 0
+
+        info = 'INFO - writing conversation: ' + x
+        write_to_log(info)
+
         # Write html report
-        with open(
-                args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "conversation-reports" + "\\" + x + "-HTML-Report.html",
-                "w") as f:
+        with open(IO_paths.report_convos + x + "-HTML-Report.html", "w") as f:
 
             JavascriptFunc = """
             <script>
@@ -375,162 +479,186 @@ def writeHtmlReport(args):
         """
             f.write(JavascriptFunc)
 
-            qr = "SELECT * FROM 'conversation_message' WHERE client_conversation_id LIKE '%s' ORDER BY creation_timestamp ASC" % x
+            # Select all messages from a certain conversation
+            qr = "SELECT * FROM 'messages' WHERE Conversation_id LIKE '%s' ORDER BY Timestamp_sent ASC" % x
             curs = conn.execute(qr)
 
             # Only write button once
             check = False
             for i in curs:
+
+                # Set database vars
+                conversation_id = i[0]
+
+                # Check if username is owner
+                if part:
+                    if i[1] == owner:
+                        sent_by_username = i[1]+" (OWNER)"
+                    else:
+                        sent_by_username = i[1]
+                else:
+                    sent_by_username = i[1]
+                sent_by_snapchat_id = i[2]
+                content_type = i[3]
+                message_decoded = i[4]
+                message_og_id = i[5]
+                attachments_id = i[6]
+                timestamp_sent_raw = i[7]
+                timestamp_recived_raw = i[8]
+
                 if check == False:
                     Start = """
-<nav>
-    <nav class="content"> 
-
-                <button class="accordion"('%s')">%s</button>
-                <div id="%s" style="display:in-line;">
-                    <table>
-
-""" % (i[0], i[0], i[0])
+    <nav>
+        <nav class="content"> 
+    
+                    <button class="accordion"('%s')">%s</button>
+                    <div id="%s" style="display:in-line;">
+                        <table>
+    
+    """ % (conversation_id, conversation_id, conversation_id)
                     # Only write button once
                     f.write(Start)
-                    Table_Header1 = """
-                        <tbody>
-                            <tr>
-                                <tr>
-                                    <th class="color1"><b>Participants</b></th>
-                                </tr>
-                        """
-                    f.write(Table_Header1)
-                    for j in check_participants(x, conn, PDpath):
-                        data = """
-                                <tr>
-                                    <th>%s, %s</th>
-                                </tr>
-                        """ % (j[0], j[1])
 
-                        f.write(data)
-
-                    # ENd of Participants
-                    Table_ender1 = """
-                            </tr>
-                        </tbody>
-                    """
-                    f.write(Table_ender1)
-                    check = True
-
-                res = check_time(i[7], args, GUI_check)
-
-                # Check time flag
-                if res:
-                    if args.mode == "ARY":
-                        id = i[16]
-                    else:
-                        # Check if username can be found
-                        checkU = checkPD(i[16], PDpath)
-                        check_id_username(i[16], PDpath)
-
-                        if checkU != False:
-                            id = checkU, i[16]
-                        else:
-                            id = i[16]
-
-                    # Content type
-                    ctype = i[13]
-                    ctype_string = check_ctype(i[13])
-
-                    Table_Header = """
+#----------------------------------------Participants------------------------------------------------------------------
+                    if args.mode != "ARY" and part:
+                        Table_Header1 = """
                             <tbody>
                                 <tr>
                                     <tr>
-                                        <th class="color1"><b> %s </b> Created: %s UTC +0 Read: %s UTC +0</th>
+                                        <th class="color1"><b>Participants</b></th>
                                     </tr>
+                            """
+                        f.write(Table_Header1)
+
+                        parties = get_participants(database, conversation_id)
+
+                        # Get participants of a chat from database
+                        for username, snapchat_id in parties:
+                            data = """
                                     <tr>
-                                        <th class="color2"> %s </th>
+                                        <th>%s, %s</th>
                                     </tr>
-                                </tr> 
-    
-    """ % (id[0], convTime(i[7]), convTime(i[8]), ctype_string)
+                            """ % (username, snapchat_id)
 
-                    # Header for msg
-                    f.write(Table_Header)
+                            f.write(data)
 
-                    # Check for content type and decode
-                    proto_string = proto_to_msg(i[5])
-                    string_list = decode_string(proto_string, i[5])
-
-                    # if a text message was found
-                    if ctype == 1:
-                        msg = msg + 1
-                    else:
-                        attachments = check_keys_proto(args, files, contextmanager[0], proto_string)
-
-                    for string in string_list:
-                        Table_Data = """
-                                    <tr>    
-                                        <td> %s </td>
-        """ % (string)
-                        f.write(Table_Data)
-                    Table_end = """
-                                    </tr>
+                        # ENd of Participants
+                        Table_ender1 = """
+                                </tr>
                             </tbody>
-                                <tbody class="">
-                    """
-                    f.write(Table_end)
+                        """
+                        f.write(Table_ender1)
+#--------------------------------------------------------------------------------------------------------------------
+                check = True
+
+#--------------------------------------Message metadata----------------------------------------------------------------
+                timestamp_sent, timestamp_recived = get_timestamp(database, message_og_id, timestamp_sent_raw)
+
+                Table_Header = """
+                        <tbody>
+                            <tr>
+                                <tr>
+                                    <th class="color1"><b> %s </b> Created: %s localtime Read: %s localtime</th>
+                                </tr>
+                                <tr>
+                                    <th class="color2"> %s </th>
+                                </tr>
+                            </tr> 
+    
+    """ % (sent_by_username, timestamp_sent, timestamp_recived, content_type)
+
+                # Header for msg
+                f.write(Table_Header)
+    #--------------------------------------------------------------------------------------------------------------------
+
+                msg = msg + 1
+
+                # Write strings that where found
+                Table_Data = """
+                                        <tr>    
+                                            <td> %s </td>
+            """ % (message_decoded)
+                f.write(Table_Data)
+                Table_end = """
+                                            </tr>
+                                    </tbody>
+                                        <tbody class="">
+                            """
+                f.write(Table_end)
+
+                # Check if messages has an attachment
+                if content_type != "Text message" and attachments_id != -1:
+                    attachments = get_attachments(database, attachments_id)
 
                     # Check flags
-                    if args.speed == "S" and (args.mode == "AND" or args.mode == "IOS"):
+                    if args.check_attachmets == "Y" and (args.mode == "AND" or args.mode == "IOS"):
 
-                        # Check content type
-                        if ctype != 1:
+                        # Check if attachments link was found
+                        if attachments:
+                            Attatchments = Attatchments + 1
 
-                            # Check if attachments link was found
-                            if attachments:
-                                Attatchments = Attatchments + 1
+                            # Write attachments and key to html report and link to the extracted file
+                            # TODO check magic bytes for file type
+                            for image, file_type in attachments:
 
-                                # Write attachments and key to html report and link to the extracted file
-                                # TODO check magic bytes for file type
-                                for key, image in attachments:
-                                    effromzip(image, args)
+                                Atta = """
+                                            <tr>
+                                                <th class="color1">Attatchment</th>
+                                            </tr>
+    
+                                    """
+                                f.write(Atta)
 
-                                    Atta = """
-                                                <tr>
-                                                    <th class="color1">Attatchment</th>
-                                                </tr>
-        
-                                        """
-                                    f.write(Atta)
-
+                                if file_type == "PIC":
                                     Atta_Data = """
-        
                                                 <tr>
-                                                    <td> <img src="../../%s" style="max-height:400; max-width:600; align:left;" alt=""></img></td>
-                                                </tr>
-                                                <tr>
-                                                    <td> <video src="../../%s" style="max-height:400; max-width:600; align:left;" alt controls></video> </td>
+                                                    <td> <img src="../%s" style="max-height:400; max-width:600; align:left;" alt=""></img></td>
                                                 </tr>
                                                 <tr>
                                                     <td> %s </td>
                                                 </tr>
+            """ % (image, image)
+
+                                elif file_type == "MOV":
+                                    Atta_Data = """
+                                                <tr>
+                                                    <td> <video src="../%s" style="max-height:400; max-width:600; align:left;" alt controls></video> </td>
+                                                </tr>
                                                 <tr>
                                                     <td> %s </td>
                                                 </tr>
-            """ % (image, image, image, key)
-                                    f.write(Atta_Data)
+                                                """ % (image, image)
+                                else:
+                                    Atta_Data = """
+                                                <tr>
+                                                    <td> FILE TYPE COULD NOT BE DETERMINED, DISPLAYING AS BOTH PICTURE AND VIDEO </td>
+                                                </tr>
+                                                <tr>
+                                                    <td> <img src="../%s" style="max-height:400; max-width:600; align:left;" alt=""></img></td>
+                                                </tr>
+                                                <tr>
+                                                    <td> <video src="../%s" style="max-height:400; max-width:600; align:left;" alt controls></video> </td>
+                                                </tr>
+                                                <tr>
+                                                    <td> %s </td>
+                                                </tr>
+                                                """ % (image, image, image)
+                                f.write(Atta_Data)
 
             End = """
                         </tbody>        
                     </table>
                 </div>
-
+    
     </nav>
-</nav>
-
-
-<script>
+    </nav>
+    
+    
+    <script>
     window.onscroll = function() {myFunction()};
     var navbar = document.getElementById("navbar");
     var sticky = navbar.offsetTop;
-
+    
     function myFunction() {
         if (window.pageYOffset >= sticky) {
             navbar.classList.add("sticky")
@@ -539,17 +667,17 @@ def writeHtmlReport(args):
             navbar.classList.remove("sticky");
         }
     }
-</script>
-
-"""
+    </script>
+    
+    """
             f.write(End)
 
-    with open(args.output_path + "\\" + "CheckArroyo-report-" + timea + "\\" + "Report.html", "w") as a:
+        with open(IO_paths.report_file, "a") as a:
 
-        for x in convons:
             link = "./conversation-reports" + "\\" + x + "-HTML-Report.html"
             name = x + "-HTML-Report.html"
             home = """
+            <div style="border: 1px solid black;">
                 <div id="stats"> 
                     <table class="column-stats" >
                         <tr>
@@ -561,33 +689,64 @@ def writeHtmlReport(args):
                     """ % (link, name)
             a.write(home)
 
-        Stats = """
+            Table_Header1 = """
                 <div id="stats"> 
                     <table class="column-stats" >
                         <tr>
-                            <th><b> Stats </b> </th>
+                            <th class="color1"><b>Participants</b></th>
                         </tr>
-                        <tr>
-                            <td>Messages decoded: %s</td>
-                        </tr>
-                        <tr>
-                            <td>Attachments found: %s</td>
-                        </tr>
-                        <tr>
-                            <td>Run time (s): %s</td> 
-                        </tr>
+                """
+            a.write(Table_Header1)
+
+            if part:
+
+                # Get participants of a chat from database
+                for username, snapchat_id in parties:
+                    if username == owner:
+                        username = username+" (OWNER)"
+                    data = """
+                            <tr>
+                                <td>%s, %s</th>
+                            </tr>
+                    """ % (username, snapchat_id)
+
+                    a.write(data)
+
+            # ENd of Participants
+            Table_ender1 = """
+                    
                     </table>
-
                 </div>
-                        """ % (msg, Attatchments, (time.time() - start_time))
-        a.write(Stats)
+            """
+            a.write(Table_ender1)
 
-    print()
-    print("Done...")
-    write_to_tex(["Done."], args.display_window)
-    print((time.time() - start_time))
-    write_to_tex(["Execute time "+str((time.time() - start_time))+"(s)."], args.display_window)
+            Stats = """
+                    <div id="stats"> 
+                        <table class="column-stats" >
+                            <tr>
+                                <th><b> Stats </b> </th>
+                            </tr>
+                            <tr>
+                                <td>Messages decoded: %s</td>
+                            </tr>
+                            <tr>
+                                <td>Attachments found: %s</td>
+                            </tr>
+                            <tr>
+                                <td> Latest activity: %s </td>
+                            </tr>
+                        </table>
+    
+                    </div>
+            </div>
+                            """ % (msg, Attatchments, timestamp_sent)
+            a.write(Stats)
 
+    info = "INFO - Done"
+    write_to_log(info)
+    webbrowser.open(IO_paths.report_file)
+
+    return IO_paths.report_file
 
 # So weird
 if __name__ == '__main__':
