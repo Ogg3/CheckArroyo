@@ -2,14 +2,11 @@
 github.com/Ogg3/CheckArroyo
 """
 import argparse
-import time
-import traceback
-from lib import *
-import lib
-import os
+import webbrowser
+from iPhone_funcs import *
+from android_funcs import *
+import sqlite3
 
-
-# Main
 def main():
     parser = argparse.ArgumentParser(description='CheckArroyo: Snapchat chat parser.')
 
@@ -24,7 +21,6 @@ def main():
     parser.add_argument('-t2', '--time_stop', required=False, action="store", help='Time range stop. Ex: 2021-01-01')
     parser.add_argument('-msg', '--msg_id', required=False, action="store",
                         help='Make report for only one conversation id')
-    parser.add_argument('-d', '--debug_mode', required=False, action="store_true", help='For my sanity')
 
     args = parser.parse_args()
 
@@ -123,421 +119,143 @@ def main():
         parser.error('No mode selected.')
 
 
-"""
-0-speed, 
-1-mode, 
-2-debug, 
-3-time_start, 
-4-time_stop, 
-5-contentmanager, 
-6-msg_id
-"""
+
 def pars_data(args, IO_paths, GUI_check):
+    """
+    0-speed,
+    1-mode,
+    2-debug,
+    3-time_start,
+    4-time_stop,
+    5-contentmanager,
+    6-msg_id
+    """
 
     # Connect to database
-    database = args.output_path + "\\" + "CheckArroyo-report-" + IO_paths.report_time + "\\" + "store_data.db"
+    store_data = args.output_path + "\\" + "CheckArroyo-report-" + IO_paths.report_time + "\\" + "store_data.db"
 
     # Create database to store data
-    create_store_data(database)
+    create_store_data(store_data)
 
     # Start execute timer
     start_time = time.time()
 
-    # Iphone mode
-    if args.mode == "IOS":
-        info = "INFO - Using iPhone mode"
-        write_to_log(info)
 
-        # Extract arroyo and perform checks
-        arroyo = checkandextract(args, 'arroyo.db', "file")
+    def arroyo_mode(args, IO_paths, GUI_check, store_data):
+        """
 
-        # Check if file exist
-        if arroyo is None:
-            info = "ERROR - Could not find arroyo."
-            write_to_log(info)
-            return
-
-        if not GUI_check:
-            contextmanager = displayIOScontentmanagers(args.input_path, args.output_path)
-            info = "INFO - Using choose contentmanager mode"
-            write_to_log(info)
-        else:
-            info = "INFO - Using auto contentmanager mode"
-            write_to_log(info)
-            contextmanager, nrofcontextmanagers = get_contentmanagers_largest(args.input_path, IO_paths.report_folder)
-
-            info = "INFO - Found " + str(nrofcontextmanagers) + " contentmanagers."
-            write_to_log(info)
-
-        if contextmanager is None:
-            info = "ERROR - Could not find contentmanager."
-            write_to_log(info)
-            return
-
-        info = "INFO - Using " + str(contextmanager) + "."
-        write_to_log(info)
-
-        PDpath = checkandextract(args, 'primary.docobjects', "file")
-        if PDpath is None:
-            info = "ERROR - Could not find PDpath."
-            write_to_log(info)
-
-        files = ""
-
-        if args.check_attachmets == "Y":
-            # Make a list of files in com.snap.file_manager_
-            files = checkinzip(args, 'com.snap.file_manager_', "path")
-            info = "INFO - Checking for attachments"
-            write_to_log(info)
-        else:
-            info = "INFO - NOT checking for attachments"
-            write_to_log(info)
-
-    # Android mode
-    elif args.mode == "AND":
-        info = "INFO - Using Android mode"
-        write_to_log(info)
-
-        # Extract arroyo and perform checks
-        arroyo = checkandextract(args, 'arroyo.db', "file")
-
-        # Check if file exist
-        if arroyo is None:
-            info = "ERROR - Could not find arroyo."
-            write_to_log(info)
-            return
-
-        CorePath = checkandextract(args, 'core.db', "file")
-        if CorePath is None:
-            info = "ERROR - Could not find core.db"
-            write_to_log(info)
-
-        MainPath = checkandextract(args, 'main.db', "file")
-        if MainPath is None:
-            info = "ERROR - Could not find main.db"
-            write_to_log(info)
-
-        files = ""
-
-        if args.check_attachmets == "Y":
-            # Make a list of files in com.snap.file_manager_
-            files = checkinzip(args, 'files', "path")
-            info = "INFO - Checking for attachments"
-            write_to_log(info)
-        else:
-            info = "INFO - NOT checking for attachments"
-            write_to_log(info)
-
-    # Only arroyo mode
-    elif args.mode == "ARY":
+        :param args:
+        :param IO_paths:
+        :param GUI_check:
+        :return:
+        """
         info = "INFO - Using arroyo.db mode"
         write_to_log(info)
         arroyo = args.input_path
 
-    # Check important files
-    try:
-        conn_arroyo = sqlite3.connect(arroyo)
+        # Check important files
+        try:
+            conn_arroyo = sqlite3.connect(arroyo)
 
-        # Check if arroyo is usable
-        info = "INFO - Checking "+str(arroyo)
-        write_to_log(info)
-        messages_count, Carroyo = check_arroyo(arroyo)
-
-        if Carroyo:
-            info = "INFO - Check complete"
+            # Check if arroyo is usable
+            info = "INFO - Checking " + str(arroyo)
             write_to_log(info)
-        else:
-            info = "WARNING - arroyo did not pass checks"
-            write_to_log(info)
+            messages_count, Carroyo = check_arroyo(arroyo)
 
-            info = "INFO - Exiting"
-            write_to_log(info)
-
-            return
-
-        if args.mode == 'IOS':
-            # Check if primary.docobjects is usable
-            info = "INFO - Checking Primary.docobjects"
-            write_to_log(info)
-
-            info = "INFO - Path: " + str(PDpath)
-            write_to_log(info)
-            count_usersnames, count_usernames_raw, Cprimary = check_primarydocobjects(PDpath)
-
-            if Cprimary:
-                info = "INFO - Check complete"
-                partCheck = True
+            if Carroyo:
+                info = "INFO - Check complete\n"
                 write_to_log(info)
             else:
-                info = "WARNING - primarydocobjects did not pass checks"
-                partCheck = False
+                info = "WARNING - arroyo did not pass checks\n"
                 write_to_log(info)
 
-            # Check if contentmanager is usable
-            info = "INFO - Checking " + str(contextmanager)
-            write_to_log(info)
-            count, Ccontentmanager, = check_contentmanager(os.path.abspath(IO_paths.report_folder + "/" + contextmanager))
-
-            if Ccontentmanager:
-                info = "INFO - Check complete"
-                content_check = True
+                info = "INFO - Exiting"
                 write_to_log(info)
-            else:
-                info = "WARNING - contentmanager did not pass checks"
-                write_to_log(info)
-                content_check = False
 
+                return
+        except Exception as e:
+            error = "ERROR - Checks Failed, one or more database is unusable" + str(
+                traceback.format_exc() + "\n" + e.__doc__)
+            write_to_log(error)
+            return "ERROR"
 
-        elif args.mode == 'AND':
-            # Check if main.db is usable
-            info = "INFO - Checking main.db"
+        convons = getConv(conn_arroyo, args.msg_id, args, IO_paths.report_time)
+
+        if args.msg_id is not None:
+            info = "INFO - Filtering for " + args.msg_id
             write_to_log(info)
 
-            info = "INFO - Path: " + str(MainPath)
-            write_to_log(info)
-            count_usernames_raw, Cmain = check_main_db(MainPath)
-
-            if Cmain:
-                info = "INFO - Check complete"
-                partCheck = True
-                write_to_log(info)
-            else:
-                info = "WARNING - main.db did not pass checks"
-                partCheck = False
-                write_to_log(info)
-
-            # Check if core.db is usable
-            info = "INFO - Checking core.db"
-            write_to_log(info)
-
-            # Check if core.db is usable
-            info = "INFO - Path: " + str(CorePath)
-            write_to_log(info)
-
-            count, Ccore, = check_core(os.path.abspath(CorePath))
-
-            if Ccore:
-                info = "INFO - Check complete"
-                content_check = True
-                write_to_log(info)
-            else:
-                info = "WARNING - core.db did not pass checks"
-                content_check = False
-                write_to_log(info)
-
-
-    except Exception as e:
-        error = "ERROR - Checks Failed, one or more database is unusable" + str(traceback.format_exc()+"\n"+e.__doc__)
-        write_to_log(error)
-        return "ERROR"
-
-    convons = getConv(conn_arroyo, args.msg_id, args, IO_paths.report_time)
-
-    if args.msg_id is not None:
-        info = "INFO - Filtering for " + args.msg_id
+        info = "INFO - Found conversations " + str(convons)
         write_to_log(info)
 
-    info = "INFO - Found conversations " + str(convons)
-    write_to_log(info)
+        # Set var
+        attachment_id = 0
+        nr = 0
 
-    # Set var
-    attachment_id = 0
-    nr=0
+        info = "INFO - Parsing messages"
+        write_to_log(info)
 
-    info = "INFO - Parsing messages"
-    write_to_log(info)
+        # For every conversation
+        for conv_id in convons:
 
-    # For every conversation
-    for conv_id in convons:
-
-        # Get a conversation
-        qr = "SELECT * FROM 'conversation_message' WHERE client_conversation_id LIKE '%s' ORDER BY creation_timestamp ASC" % conv_id
-        curs = conn_arroyo.execute(qr)
-
-        # Write participants only once
-        check = True
-
-        # Go through database query
-        for i in curs:
-            nr = nr + 1
-            print("\rParsed "+str(nr)+" out of "+ str(messages_count) +" messages\n", flush=True, end='')
-
-            #
-            #info = "INFO - Parsing"+str(i)
-            #write_to_log(info)
+            # Get a conversation
+            qr = "SELECT * FROM 'conversation_message' WHERE client_conversation_id LIKE '%s' ORDER BY creation_timestamp ASC" % conv_id
+            curs = conn_arroyo.execute(qr)
 
             # Write participants only once
-            if check and args.mode != "ARY":
-                part = ""
-                if args.mode == "IOS":
-                    # Get participants of a conversation
-                    if Cprimary:
-                        part = check_participants(conv_id, conn_arroyo, PDpath)
-                        if part != None:
-                            for username, snapchat_id in part:
-                                # Add to database for storage
-                                insert_participants(database, conv_id, username, snapchat_id, args, IO_paths.report_time)
-                elif args.mode == "AND":
-                    # Get participants of a conversation
-                    if Cmain:
-                        part = check_participants_android(conv_id, conn_arroyo, MainPath)
-                        if part != None:
-                            for username, snapchat_id in part:
-                                # Add to database for storage
-                                insert_participants(database, conv_id, username, snapchat_id, args,
-                                                    IO_paths.report_time)
+            check = True
 
-                check = False
+            # Go through database query
+            for i in curs:
+                nr = nr + 1
+                print("\rParsed " + str(nr) + " out of " + str(messages_count) + " messages\n", flush=True, end='')
 
-            raw_timestamp = i[7]
+                raw_timestamp = i[7]
 
-            # Check if time filter is applied
-            res = check_time(raw_timestamp, args)
+                # Check if time filter is applied
+                res = check_time(raw_timestamp, args)
 
-            # Content type
-            ctype = i[13]
-            ctype_string = check_ctype(i[13])
+                # Content type
+                ctype = i[13]
+                ctype_string = check_content_type(i[13])
 
-            # Check for content type and decode
-            proto_string = proto_to_msg(i[5])
-            string_list = decode_string(proto_string, i[5])
+                # Check for content type and decode
+                proto_string = proto_to_msg(i[5])
+                string_list = decode_string(proto_string, i[5])
 
-            # Check time flag
-            if res:
+                # Check time flag
+                if res:
 
-                # Check mode
-                if args.mode == "ARY":
                     sent_by_snapchat_id = i[16]
                     # if a text message was found
                     if ctype == 1:
-                        insert_message(database, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
+                        insert_message(store_data, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
                                        string_list[0], i[1], -1, i[7], i[8], args, IO_paths.report_time)
                     else:
-                        insert_message(database, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
+                        insert_message(store_data, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
                                        string_list, i[1], -1, i[7], i[8], args, IO_paths.report_time)
-                elif not content_check:
-                    sent_by_snapchat_id = i[16]
-                    # if a text message was found
-                    if ctype == 1:
-                        insert_message(database, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
-                                       string_list[0], i[1], -1, i[7], i[8], args, IO_paths.report_time)
-                    else:
-                        insert_message(database, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
-                                       string_list, i[1], -1, i[7], i[8], args, IO_paths.report_time)
-                # If mode is not arroyo
-                # If the checks for usernames did pass skip to next
-                # If the checks did not pass
-                elif not partCheck:
-                    sent_by_snapchat_id = i[16]
-                    # if a text message was found
-                    if ctype == 1:
-                        insert_message(database, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
-                                       string_list[0], i[1], -1, i[7], i[8], args, IO_paths.report_time)
-                    else:
-                        if args.mode == "IOS":
-                            attachments = check_keys_proto_iPhone(args, files, contextmanager, proto_string, IO_paths.report_time)
-                        elif args.mode == "AND":
-                            attachments = check_keys_proto_Android(args, files, CorePath, proto_string,
-                                                                  IO_paths.report_time)
 
-                        # Check flags
-                        if args.check_attachmets == "Y" and (args.mode == "AND" or args.mode == "IOS"):
-                            # Check if attachments link was found
-                            if attachments:
+        print()
+        info = "INFO - Parsing complete"
+        write_to_log(info)
 
-                                # Increase id
-                                attachment_id = attachment_id + 1
+        execute_time = (time.time() - start_time)
+        info = str(execute_time) + " (s)"
+        write_to_log(info)
 
-                                # Add to database
-                                insert_message(database, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
-                                               string_list, i[1], attachment_id,
-                                               i[7], i[8], args, IO_paths.report_time)
+        return [convons, execute_time, store_data, get_owner(arroyo), None]
 
-                                # Write attachments and key to html report and link to the extracted file
-                                # TODO check magic bytes for file type
-                                for key, image in attachments:
-                                    effromzip(image)
-                                    file_type = get_file_header(os.path.abspath(IO_paths.report_folder + "/" + image))
-                                    insert_attachment(database, attachment_id, image, key, file_type, args, IO_paths.report_time)
-                            else:
+    # Iphone mode
+    if args.mode == "IOS":
+        return iPhone_mode(args, IO_paths, GUI_check, store_data, start_time)
 
-                                # Add to database
-                                insert_message(database, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
-                                               string_list, i[1], -1,
-                                               i[7], i[8], args, IO_paths.report_time)
+    # Android mode
+    elif args.mode == "AND":
+        return android_mode(args, IO_paths, GUI_check, store_data, start_time)
 
-                # Check if the attachment database checks passed
-                elif content_check:
-
-                    # Makes sure the username checks passed
-                    if part != None and partCheck:
-                        # Check if username can be found
-                        if args.mode == "IOS":
-                            checkU = checkPD(i[16], PDpath)
-                        elif args.mode == "AND":
-                            checkU = checkPD_android(i[16], MainPath)
-                        
-
-                        # If no username can be linked
-                        if checkU != False:
-                            sent_by_username = checkU
-                            sent_by_snapchat_id = i[16]
-                        else:
-                            sent_by_username = ""
-                            sent_by_snapchat_id = i[16]
-                    else:
-                        sent_by_username = ""
-                        sent_by_snapchat_id = i[16]
-
-                    # if a text message was found
-                    if ctype == 1:
-                        insert_message(database, conv_id, sent_by_username, sent_by_snapchat_id, ctype_string, string_list[0], i[1], -1, i[7], i[8], args, IO_paths.report_time)
-                    else:
-                        if args.mode == "IOS":
-                            attachments = check_keys_proto_iPhone(args, files, contextmanager, proto_string,
-                                                                  IO_paths.report_time)
-                        elif args.mode == "AND":
-                            attachments = check_keys_proto_Android(args, files, CorePath, proto_string,
-                                                                   IO_paths.report_time)
-
-                        # Check flags
-                        if args.check_attachmets == "Y" and (args.mode == "AND" or args.mode == "IOS"):
-                            #print(attachments)
-                            # Check if attachments link was found
-                            if attachments:
-
-                                # Increase id
-                                attachment_id = attachment_id + 1
-
-                                # Add to database
-                                insert_message(database, conv_id, sent_by_username, sent_by_snapchat_id, ctype_string, string_list, i[1], attachment_id,
-                                               i[7], i[8], args, IO_paths.report_time)
-
-                                # Write attachments and key to html report and link to the extracted file
-                                for key, image in attachments:
-                                    effromzip(image)
-                                    file_type = get_file_header(os.path.abspath(IO_paths.report_folder + "/" + image))
-                                    insert_attachment(database, attachment_id, image, key, file_type, args, IO_paths.report_time)
-                            else:
-
-                                # Add to database
-                                insert_message(database, conv_id, sent_by_username, sent_by_snapchat_id, ctype_string, string_list, i[1], -1,
-                                               i[7], i[8], args, IO_paths.report_time)
-
-    if part != None and partCheck:
-        owner = get_owner(database)
-    else:
-        owner = None
-
-    print()
-    info = "INFO - Parsing complete"
-    write_to_log(info)
-
-    execute_time = (time.time() - start_time)
-    info = str(execute_time)+" (s)"
-    write_to_log(info)
-
-    return [convons, execute_time, database, owner, partCheck]
+    # Only arroyo mode
+    elif args.mode == "ARY":
+        return arroyo_mode(args, IO_paths, GUI_check, store_data)
 
 
 # Write report on findings
@@ -783,9 +501,10 @@ def writeHtmlReport(args):
                 content_type = i[3]
                 message_decoded = i[4]
                 message_og_id = i[5]
-                attachments_id = i[6]
-                timestamp_sent_raw = i[7]
-                timestamp_recived_raw = i[8]
+                Server_og_id = i[6]
+                attachments_id = i[7]
+                timestamp_sent_raw = i[8]
+                timestamp_recived_raw = i[9]
 
                 if check == False:
                     Start = """
@@ -835,18 +554,27 @@ def writeHtmlReport(args):
 #--------------------------------------Message metadata----------------------------------------------------------------
                 timestamp_sent, timestamp_recived = get_timestamp(database, message_og_id, timestamp_sent_raw)
 
+                if i[1] == owner:
+                    timestamp_recived_modified = ""
+                else:
+
+                    if timestamp_recived == "1970-01-01 01:00:00.0":
+                        timestamp_recived_modified = "NOT READ"
+                    else:
+                        timestamp_recived_modified = "Read: "+timestamp_recived+" localtime"
+
                 Table_Header = """
                         <tbody>
                             <tr>
                                 <tr>
-                                    <th class="color1"><b> %s </b> Created: %s localtime Read: %s localtime</th>
+                                    <th class="color1"><b> %s </b> Created: %s localtime %s</th>
                                 </tr>
                                 <tr>
-                                    <th class="color2"> %s </th>
+                                    <th class="color2"> %s, Message ID: %s Server ID: %s </th>
                                 </tr>
                             </tr> 
     
-    """ % (sent_by_username, timestamp_sent, timestamp_recived, content_type)
+    """ % (sent_by_username, timestamp_sent, timestamp_recived_modified, content_type, message_og_id, Server_og_id)
 
                 # Header for msg
                 f.write(Table_Header)
@@ -879,7 +607,6 @@ def writeHtmlReport(args):
                             Attatchments = Attatchments + 1
 
                             # Write attachments and key to html report and link to the extracted file
-                            # TODO check magic bytes for file type
                             for image, file_type in attachments:
 
                                 Atta = """
@@ -899,6 +626,7 @@ def writeHtmlReport(args):
                                                     <td> %s </td>
                                                 </tr>
             """ % (image, image)
+
                                 elif file_type == "MOV":
                                     Atta_Data = """
                                                 <tr>
@@ -1024,6 +752,7 @@ def writeHtmlReport(args):
 
     info = "INFO - Done"
     write_to_log(info)
+    webbrowser.open(IO_paths.report_file)
 
     return IO_paths.report_file
 
