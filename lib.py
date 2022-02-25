@@ -117,6 +117,8 @@ def check_content_type(int_ctype):
             return "Shared Location (Not Tested)"
         elif int_ctype == 10:
             return "Took screenshot"
+        elif int_ctype == 12:
+            return "Unsuccessful video call"
         elif int_ctype == 13:
             return "Unsuccessful voice call"
         else:
