@@ -73,7 +73,7 @@ def android_mode(args, IO_paths, GUI_check, store_data, start_time):
         else:
             info = """
                         ===================================
-                        WARNING - Arroyo passed all checks!
+                        WARNING - Arroyo did not pass all checks!
                         ===================================
                         """
             write_to_log(info)
@@ -103,7 +103,7 @@ def android_mode(args, IO_paths, GUI_check, store_data, start_time):
         else:
             info = """
                         ===================================
-                        SUCCESS - main.db passed all checks!
+                        SUCCESS - main.db did not pass all checks!
                         ===================================
                         """
             partCheck = False
@@ -126,7 +126,11 @@ def android_mode(args, IO_paths, GUI_check, store_data, start_time):
             content_check = True
             write_to_log(info)
         else:
-            info = "WARNING - core.db did not pass checks"
+            info = """
+                        ===================================
+                        SUCCESS - core.db did not pass all checks!
+                        ===================================
+                        """
             content_check = False
             write_to_log(info)
 
