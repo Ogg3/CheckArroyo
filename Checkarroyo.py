@@ -210,30 +210,61 @@ def pars_data(args, IO_paths, GUI_check):
                 nr = nr + 1
                 print("\rParsed " + str(nr) + " out of " + str(messages_count) + " messages\n", flush=True, end='')
 
-                raw_timestamp = i[7]
+                # Rename list
+                client_conversation_id = i[0]
+                client_message_id = i[1]
+                server_message_id = i[2]
+                client_resolution_id = i[3]
+                local_message_content_id = i[4]
+                message_content = i[5]
+                message_state_type = i[6]
+                creation_timestamp = i[7]
+                read_timestamp = i[8]
+                sent_by_snapchat_id = i[16]
 
                 # Check if time filter is applied
-                res = check_time(raw_timestamp, args)
+                res = check_time(creation_timestamp, args)
 
                 # Content type
                 ctype = i[13]
-                ctype_string = check_content_type(i[13])
+                ctype_string = check_content_type(ctype)
 
                 # Check for content type and decode
-                proto_string = proto_to_msg(i[5])
-                string_list = decode_string(proto_string, i[5])
+                proto_string = proto_to_msg(message_content)
+                string_list = decode_string(proto_string, message_content)
 
                 # Check time flag
                 if res:
 
-                    sent_by_snapchat_id = i[16]
                     # if a text message was found
                     if ctype == 1:
-                        insert_message(store_data, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
-                                       string_list[0], i[1], -1, i[7], i[8], args, IO_paths.report_time)
+                        insert_message(store_data,
+                                   conv_id,
+                                   sent_by_username,
+                                   sent_by_snapchat_id,
+                                   ctype_string,
+                                   message_content,
+                                   Message_encoded,
+                                   string_list,
+                                   client_message_id,
+                                   server_message_id,
+                                   attachment_id,
+                                   creation_timestamp,
+                                   read_timestamp)
                     else:
-                        insert_message(store_data, conv_id, sent_by_snapchat_id, sent_by_snapchat_id, ctype_string,
-                                       string_list, i[1], -1, i[7], i[8], args, IO_paths.report_time)
+                        insert_message(store_data,
+                                   conv_id,
+                                   sent_by_username,
+                                   sent_by_snapchat_id,
+                                   ctype_string,
+                                   message_content,
+                                   Message_encoded,
+                                   string_list,
+                                   client_message_id,
+                                   server_message_id,
+                                   attachment_id,
+                                   creation_timestamp,
+                                   read_timestamp)
 
         print()
         info = "INFO - Parsing complete"
