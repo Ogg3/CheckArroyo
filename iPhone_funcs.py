@@ -12,7 +12,7 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
     :param GUI_check:
     :return:
     """
-    verbose = args.verbose
+    #verbose = args.verbose
     info = "INFO - Using iPhone mode"
     write_to_log(info)
 
