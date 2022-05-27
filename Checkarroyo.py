@@ -31,8 +31,8 @@ def main():
     args = parser.parse_args()
 
     input_path = args.input_path
-    global verbose
-    verbose = args.verbose
+    #global verbose
+    #verbose = args.verbose
 
     # iPhone mode
     if args.mode == "IOS":
@@ -184,9 +184,9 @@ def pars_data(args, IO_paths, GUI_check):
             conn_arroyo = sqlite3.connect(arroyo)
 
             # Check if arroyo is usable
-            if verbose:
-                info = "INFO - Checking " + str(arroyo)
-                write_to_log(info)
+            #if verbose:
+            info = "INFO - Checking " + str(arroyo)
+            write_to_log(info)
             messages_count, Carroyo = check_arroyo(arroyo)
 
             if Carroyo:
