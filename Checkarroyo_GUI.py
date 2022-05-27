@@ -104,7 +104,7 @@ def retrieve_input(tex):
 try:
 
     root = tk.Tk()
-    root.title("Thunder")
+    root.title("CheckArroyo 0-6-7")
     # root.geometry("1300x800")
 
     try:

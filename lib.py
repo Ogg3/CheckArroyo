@@ -3,6 +3,7 @@ github.com/Ogg3/CheckArroyo
 """
 
 import datetime
+import os
 import sqlite3
 from tkinter import *
 from zipfile import ZipFile
@@ -108,6 +109,8 @@ def check_content_type(int_ctype):
         # 2 is media
         elif int_ctype == 2:
             return "Media"
+        elif int_ctype == 3:
+            return "Video (Not Tested)"
         # 4 is audio messages
         elif int_ctype == 4:
             return "Audio message"
@@ -369,7 +372,9 @@ def readzip(zip):
 
         f.close()
     except Exception as e:
-        write_to_log(e)
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
+        write_to_log(error)
         return
 
 
@@ -383,7 +388,9 @@ def effromzip(file):
 
         f.close()
     except Exception as e:
-        write_to_log(e)
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
+        write_to_log(error)
         return
 
 
@@ -395,7 +402,9 @@ def readfromzip(zip, file):
         with ZipFile(zip, 'r') as f:
             return f.read(file)
     except Exception as e:
-        write_to_log(e)
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
+        write_to_log(error)
         return
 
 
@@ -409,7 +418,9 @@ def write_to_log(message):
             f.write(str(message)+IO_paths.nl)
         except Exception as e:
             print("ERROR - Logfile broke, how even.")
-            print(e)
+            error = "ERROR - " + str(
+                traceback.format_exc() + "\n" + e.__doc__)
+            write_to_log(error)
 
 
 def compare_magic_bytes(file):
@@ -430,18 +441,253 @@ def compare_magic_bytes(file):
         elif header[1:4] == b"PNG":
             return "PIC"
         # ?MP4?
-        elif header[4:] == b"ftypmp":
+        elif b"ftypmp" in header:
             return "MOV"
         elif header[:4] == b"RIFF":
             return "PIC"
         elif header[:1] == b"\n" and header[2:8] == b"media~":
             return "CONTROL FILE"
+        elif b'overlay~' in header:
+            return "CONTROL FILE"
+        elif b'thumbnai' in header:
+            return "CONTROL FILE"
         elif header[:5] == b'\xff\xd8\xff\xfe\x00':
             return "PIC"
         elif header == b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" or header == b'':
             return "EMPTY"
+        elif header == b'\x00\x00\x00 ftypis':
+            return "MOV"
+        elif header == b'PK\x03\x04\n\x00\x00\x08\x00\x00':
+            return "COMPRESSED"
         else:
             #print(header[:5])
             errorstring = "ERROR - Unable to determine file typ for: "+str(file)
             write_to_log(errorstring)
             write_to_log(str(header))
+
+
+def outputcolors(string, status, bold):
+    """
+    string: string to change
+    status: True = Green False = red
+    bold: True = yes False = no
+    """
+    attr = []
+    if status:
+        attr.append("32")
+    else:
+        attr.append("31")
+    if bold:
+        attr.append("1")
+    return "\x1b[%sm%s\x1b[0m" % (';'.join(attr), string)
+
+
+def html_start():
+    start = """
+    <html>
+<head>
+<style>
+* {
+  font-family: 'Avenir';
+}
+.bubbleWrapper {
+	padding: 10px 10px;
+	display: flex;
+	justify-content: flex-end;
+	flex-direction: column;
+	align-self: flex-end;
+  color: #fff;
+}
+.inlineContainer {
+  display: inline-flex;
+}
+.inlineContainer.own {
+  flex-direction: row-reverse;
+}
+.inlineIcon {
+  width:20px;
+  object-fit: contain;
+}
+.ownBubble {
+	min-width: 60px;
+	max-width: 700px;
+	padding: 14px 18px;
+  margin: 6px 8px;
+	background-color: #03C03C;
+	border-radius: 16px 16px 0 16px;
+	border: 1px solid #443f56;
+
+}
+.otherBubble {
+	min-width: 60px;
+	max-width: 700px;
+	padding: 14px 18px;
+  margin: 6px 8px;
+	background-color: #0000FF;
+	border-radius: 16px 16px 16px 0;
+	border: 1px solid #54788e;
+
+}
+.own {
+	align-self: flex-end;
+}
+.other {
+	align-self: flex-start;
+}
+span.own,
+span.other{
+  font-size: 14px;
+  color: grey;
+}
+</style>
+</head>
+<body>
+    """
+    return start
+
+
+def html_participants(username, snapchatid):
+    ret = """
+    <div>
+        Username: %s
+        Snapchat ID: %s
+    </div>
+    """ % (username, snapchatid)
+    return ret
+
+
+def html_right_start(metadata):
+    """
+
+    """
+
+    sender_snapchat_id = metadata[0]
+    message_id = metadata[1]
+    server_id = metadata[2]
+    message_decoded = metadata[3]
+
+    top = """
+        <div class="bubbleWrapper">
+            <div class="inlineContainer own">
+                <div class="ownBubble own">
+                <!--
+    				Metadata
+    				Sender snapchat id: %s
+    				Message ID: %s
+    				Server ID: %s
+    				Message decoded: %s
+
+    				-->
+            """ % (sender_snapchat_id, message_id, server_id, message_decoded)
+
+    return top
+
+
+def html_right_end(username, message_type, timesent):
+    bot = """
+    			</div>
+    		</div><span class="own">Username: %s Type: %s Sent: %s</span>
+    	</div>
+        """ % (username, message_type, timesent)
+
+    return bot
+
+
+def html_left_start(metadata):
+    """
+
+    """
+
+    sender_snapchat_id = metadata[0]
+    message_id = metadata[1]
+    server_id = metadata[2]
+    message_decoded = metadata[3]
+
+    top = """
+        <div class="bubbleWrapper">
+            <div class="inlineContainer">
+                <div class="otherBubble other">
+                <!--
+    				Metadata
+    				Sender snapchat id: %s
+    				Message ID: %s
+    				Server ID: %s
+    				Message decoded: %s
+
+    				-->
+            """ % (sender_snapchat_id, message_id, server_id, message_decoded)
+
+    return top
+
+
+def html_left_end(username, message_type, timesent, timerecived):
+    """
+
+    """
+    bot = """
+    			</div>
+    		</div><span class="other">Username: %s Type: %s Sent: %s Recived: %s</span>
+    	</div>
+        """ % (username, message_type, timesent, timerecived)
+
+    return bot
+
+
+def html_video(path):
+    """
+
+    """
+    ret = """
+                <video src="../%s" style="max-height:400; max-width:600; align:left;" alt="" controls=""></video>
+    """ % path
+
+    return ret
+
+
+def html_pic(path):
+    """
+
+    """
+    ret = """
+                <img src="../%s" style="max-height:400; max-width:600; align:left;" alt=""></img>
+    """ % path
+
+    return ret
+
+
+def html_text(message):
+    ret = """
+                    %s
+    """ % message
+    return ret
+
+
+def html_unknown():
+    ret = """
+                    <b><p style="color:red">UNKNOWN MESSAGE OR FILE TYPE</b>
+    """
+    return ret
+
+def html_expert(message):
+    ret = """
+                    <b><p style="color:red">UNFILTERED DATA:</b><br>
+                    %s
+    """ % message
+    return ret
+
+
+def html_voicecall():
+    """
+    TODO
+    """
+
+
+def html_end():
+    end = """
+</body>
+    """
+    return end
+
+def segmented_files(files):
+    pass
+    # TODO

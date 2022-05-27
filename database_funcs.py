@@ -55,11 +55,13 @@ def getConv(conn, msg_id, args, timea):
 
         return conv
     except Exception as e:
-        write_to_log(e)
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
+        write_to_log(error)
         return
 
 
-def get_attachments(database, attachments_id):
+def get_attachments(database, attachments_ids):
     """
     Retrieves the filename for a specific id
     :param database:
@@ -69,7 +71,7 @@ def get_attachments(database, attachments_id):
     ret = []
 
     conn = sqlite3.connect(database)
-    qr = 'SELECT filename, file_type FROM messages_attachments WHERE Attachments_id =="%s"' % attachments_id
+    qr = 'SELECT filename, file_type FROM messages_attachments WHERE Attachments_id =="%s"' % attachments_ids
     curs = conn.execute(qr)
 
     for res in curs:
@@ -201,7 +203,9 @@ def row_exists_count(database, table, name):
             return i[0]
 
     except Exception as e:
-        write_to_log(e)
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
+        write_to_log(error)
         return 0
 
 
@@ -267,8 +271,9 @@ def insert_attachment(database, Attachments_id, filename, contentmangare_key, fi
         conn.execute(qr)
         conn.commit()
     except Exception as e:
-        errorstring = "ERROR - Could not insert "+str(qr)+" to store_data.db." + str(e)
-        write_to_log(errorstring)
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
+        write_to_log(error)
 
 
 def insert_message(database,
@@ -443,3 +448,12 @@ def get_database_struct(database):
         ret.append(i)
 
     return ret
+
+def get_nr_freelists(filename):
+    """
+    Get the number of freelists in the database
+    """
+    f = open(filename, 'rb')
+    content = f.read()
+    freepages = struct.unpack('>L', content[36:40])[0]
+    return str(freepages)

@@ -1,3 +1,5 @@
+import os.path
+
 from lib import *
 from database_funcs import *
 import re
@@ -10,6 +12,7 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
     :param GUI_check:
     :return:
     """
+    verbose = args.verbose
     info = "INFO - Using iPhone mode"
     write_to_log(info)
 
@@ -20,7 +23,8 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
     ===================================
     """
     write_to_log(info)
-    path_mode = input()
+    #path_mode = input()
+    path_mode = "No"
 
     if path_mode == "Yes":
         info = """
@@ -35,7 +39,7 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
     # Check if file exist
     if arroyo is None:
         info = "ERROR - Could not find arroyo."
-        write_to_log(info)
+        write_to_log(outputcolors(info, False, True))
         return
 
     if path_mode == "Yes":
@@ -59,7 +63,7 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
 
     if contextmanager is None:
         info = "ERROR - Could not find contentmanager."
-        write_to_log(info)
+        write_to_log(outputcolors(info, False, True))
         return
 
     info = "INFO - Using " + str(contextmanager) + "."
@@ -75,7 +79,7 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
         PDpath = checkandextract(args, 'primary.docobjects', "file")
         if PDpath is None:
             info = "ERROR - Could not find PDpath."
-            write_to_log(info)
+            write_to_log(outputcolors(info, False, True))
 
     if path_mode == "Yes":
         info = """
@@ -87,7 +91,7 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
         cachecontrollerPath = checkandextract(args, 'cache_controller.db', "file")
         if cachecontrollerPath is None:
             info = "ERROR - Could not find cachecontrller."
-            write_to_log(info)
+            write_to_log(outputcolors(info, False, True))
 
     files = ""
 
@@ -113,18 +117,14 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
         if Carroyo:
 
             info = """
-            ===================================
-            SUCCESS - arroyo passed all checks!
-            ===================================
+SUCCESS - arroyo passed all checks!
             """
-            write_to_log(info)
+            write_to_log(outputcolors(info, True, True))
         else:
             info = """
-            ===================================
-            WARNING - arroyo did not pass checks
-            ===================================
+WARNING - arroyo did not pass checks
             """
-            write_to_log(info)
+            write_to_log(outputcolors(info, False, True))
 
             info = "INFO - Exiting"
             write_to_log(info)
@@ -143,20 +143,16 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
 
         if Cprimary:
             info = """
-            ===================================
-            SUCCESS - primarydocobjects passed all checks!
-            ===================================
+SUCCESS - primarydocobjects passed all checks!
             """
             partCheck = True
-            write_to_log(info)
+            write_to_log(outputcolors(info, True, True))
         else:
             info = """
-            ===================================
-            WARNING - primarydocobjects did not pass checks
-            ===================================
+WARNING - primarydocobjects did not pass checks
             """
             partCheck = False
-            write_to_log(info)
+            write_to_log(outputcolors(info, False, True))
 
         # Check if cachecontroller is usable
         info = "INFO - Checking cache_controller.db\n"
@@ -168,18 +164,14 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
 
         if Ccache:
             info = """
-            ===================================
-            SUCCESS - cache_controller.db passed all checks!
-            ===================================
+SUCCESS - cache_controller.db passed all checks!
             """
-            write_to_log(info)
+            write_to_log(outputcolors(info, True, True))
         else:
             info = """
-            ===================================
-            WARNING - cache_controller.db did not pass checks
-            ===================================
+WARNING - cache_controller.db did not pass checks
             """
-            write_to_log(info)
+            write_to_log(outputcolors(info, False, True))
 
         # Check if contentmanager is usable
         info = "INFO - Checking " + str(contextmanager)
@@ -189,19 +181,15 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
 
         if Ccontentmanager:
             info = """
-            ===================================
-            SUCCESS - contentmanager passed all checks!
-            ===================================
+SUCCESS - contentmanager passed all checks!
             """
             content_check = True
-            write_to_log(info)
+            write_to_log(outputcolors(info, True, True))
         else:
             info = """
-            ===================================
-            WARNING - contentmanager did not pass checks
-            ===================================
+WARNING - contentmanager did not pass checks
             """
-            write_to_log(info)
+            write_to_log(outputcolors(info, False, True))
             content_check = False
 
     except Exception as e:
@@ -217,7 +205,7 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
         info = "INFO - Filtering for " + args.msg_id
         write_to_log(info)
 
-    info = "INFO - Found conversations " + str(convons)
+    info = "INFO - Found "+str(len(convons))+" conversations"
     write_to_log(info)
 
     if len(convons) > 0:
@@ -322,26 +310,41 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
 
                         # Check flags
                         if args.check_attachmets == "Y":
+
+                            empty_file_check = True
+                            multi_id = True
+
                             for filepath, conversation_id_cached, conversation_serverid_cached in cache_matches:
                                 # print(conv_id, conversation_id_cached, server_message_id, conversation_serverid_cached)
                                 # Check if conversation id matches
                                 if conv_id == conversation_id_cached and str(server_message_id) == str(
                                         conversation_serverid_cached):
-                                    attachment_id = attachment_id + 1
                                     effromzip(filepath)
-                                    file_type = compare_magic_bytes(
-                                        os.path.abspath(IO_paths.report_folder + "/" + filepath))
-                                    insert_attachment(store_data,
-                                                      attachment_id,
-                                                      filepath,
-                                                      conversation_serverid_cached,
-                                                      file_type,
-                                                      args,
-                                                      IO_paths.report_time)
 
-                                    attachment_check = True
+                                    # Check size of file
+                                    if os.path.getsize(IO_paths.report_folder + "/" + filepath) == 0:
+                                        empty_file_check = False
+
+                                    if empty_file_check:
+
+                                        if multi_id:
+                                            attachment_id = attachment_id + 1
+                                            multi_id = False
+
+                                        file_type = compare_magic_bytes(
+                                            os.path.abspath(IO_paths.report_folder + "/" + filepath))
+                                        insert_attachment(store_data,
+                                                          attachment_id,
+                                                          filepath,
+                                                          conversation_serverid_cached,
+                                                          file_type,
+                                                          args,
+                                                          IO_paths.report_time)
+
+                                        attachment_check = True
 
                             # If no attachment was found with cache check old method
+
                             if not attachment_check:
 
                                 # If content manager passed checks
@@ -354,7 +357,9 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
 
                                     # Check flags
                                     if args.check_attachmets == "Y":
-                                        # print(attachments)
+
+                                        empty_file_check = True
+
                                         # Check if attachments link was found
                                         if attachments:
 
@@ -363,18 +368,82 @@ def iPhone_mode(args, IO_paths, GUI_check, store_data, start_time):
                                             # Increase id
                                             attachment_id = attachment_id + 1
 
+                                            image_checked = []
+
                                             # Write attachments and key to html report and link to the extracted file
                                             for key, image in attachments:
-                                                effromzip(image)
-                                                file_type = compare_magic_bytes(
-                                                    os.path.abspath(IO_paths.report_folder + "/" + image))
-                                                insert_attachment(store_data,
-                                                                  attachment_id,
-                                                                  image,
-                                                                  key,
-                                                                  file_type,
-                                                                  args,
-                                                                  IO_paths.report_time)
+
+                                                if image not in image_checked:
+                                                    image_checked.append(image)
+                                                    effromzip(image)
+
+                                                    # Check size of file
+                                                    if os.path.getsize(IO_paths.report_folder + "/" + image) == 0:
+                                                        empty_file_check = False
+
+                                                    if empty_file_check:
+
+                                                        file_type = compare_magic_bytes(
+                                                            os.path.abspath(IO_paths.report_folder + "/" + image))
+
+                                                        # Check if file is a controlfile
+                                                        if file_type == "CONTROL FILE":
+
+                                                            # Get only filename
+                                                            filepath_list = image.split("/")
+                                                            only_filename = filepath_list[len(filepath_list) - 1]
+
+                                                            # Check if file has subfiles
+                                                            subfile_match = []
+
+                                                            # Check if there are more files named the same
+                                                            for subfiles in files:
+
+                                                                # Get only filename
+                                                                subfiles_list = subfiles.split("/")
+                                                                only_subfiles = subfiles_list[len(subfiles_list) - 1]
+
+                                                                # Check if filename has subfiles that can be linked
+                                                                if only_filename in only_subfiles and only_filename != only_subfiles:
+                                                                    # Save matches to a array
+                                                                    subfile_match.append(only_subfiles)
+
+                                                            # Check if array is empty
+                                                            if subfile_match != []:
+
+                                                                # For all matching files
+                                                                for subfiles_match_name in subfile_match:
+                                                                    # Replace old filepath to controlfile with new path to media files
+                                                                    newfilepath = image.replace(only_filename,
+                                                                                                   subfiles_match_name)
+                                                                    effromzip(newfilepath)
+
+                                                                    # Check size of file
+                                                                    if os.path.getsize(
+                                                                            IO_paths.report_folder + "/" + newfilepath) == 0:
+                                                                        empty_file_check = False
+
+                                                                    if empty_file_check:
+                                                                        newfiletype = compare_magic_bytes(
+                                                                            os.path.abspath(
+                                                                                IO_paths.report_folder + "/" + newfilepath))
+
+                                                                        insert_attachment(store_data,
+                                                                                          attachment_id,
+                                                                                          newfilepath,
+                                                                                          key,
+                                                                                          newfiletype,
+                                                                                          args,
+                                                                                          IO_paths.report_time)
+
+                                                        else:
+                                                            insert_attachment(store_data,
+                                                                          attachment_id,
+                                                                          image,
+                                                                          key,
+                                                                          file_type,
+                                                                          args,
+                                                                          IO_paths.report_time)
                                         else:
                                             attachment_check = False
 
@@ -432,34 +501,89 @@ def parse_cache_controller(storedata, database, files, conversation_ids):
     """
     Check keys with proto strings
     Contentmanager is the queryed for the string and checked if there is a hit
-    Returns a list of tupels where the tupels are (key, path_to_image)
     """
 
     info = "INFO - Parsing cachecontroller"
     write_to_log(info)
 
+    # Set vars
     match = []
+    files_parsed = 0
 
+    # For all files in zip
     for filepath in files:
+
+        # Display info
+        files_parsed = files_parsed + 1
+        print("\rParsed " + str(files_parsed), flush=True, end='')
+
+        # Get only filename
         filepath_list = filepath.split("/")
         only_filename = filepath_list[len(filepath_list) - 1]
 
+        # Connect to database
         conn = sqlite3.connect(database)
-
+        # Check if filename is in database
         qr = "SELECT EXTERNAL_KEY FROM CACHE_FILE_CLAIM WHERE CACHE_KEY == '%s'" % only_filename
 
-        curs = conn.execute(qr)
+        try:
+            curs = conn.execute(qr)
 
-        for i in curs:
-            for ids in conversation_ids:
-                if ids in i[0]:
-                    res = i[0].split(":")
-                    conversation_id_cached = res[1]
-                    conversation_serverid_cached = res[2]
+            for i in curs:
 
-                    match.append((filepath, conversation_id_cached, conversation_serverid_cached))
-                    insert_cached_files(storedata, filepath, conversation_id_cached, conversation_serverid_cached)
+                # For all conversation IDs found
+                for ids in conversation_ids:
 
+                    # Check if IDs match
+                    if ids in i[0]:
+
+                        # Get conversation id and server id
+                        res = i[0].split(":")
+                        conversation_id_cached = res[1]
+                        conversation_serverid_cached = res[2]
+
+                        subfile_match = []
+
+                        # Check if there are more files named the same
+                        for subfiles in files:
+
+                            # Get only filename
+                            subfiles_list = subfiles.split("/")
+                            only_subfiles = subfiles_list[len(subfiles_list) - 1]
+
+                            # Check if filename has subfiles that can be linked
+                            if only_filename in only_subfiles and only_filename != only_subfiles:
+
+                                # Save matches to a array
+                                subfile_match.append(only_subfiles)
+
+                        # Check if array is empty
+                        if subfile_match != []:
+
+                            # Controlfile could be a picture or video
+                            match.append((filepath, conversation_id_cached, conversation_serverid_cached))
+                            insert_cached_files(storedata, filepath, conversation_id_cached,
+                                                conversation_serverid_cached)
+
+                            # For all matching files
+                            for subfiles_match_name in subfile_match:
+
+                                # Replace old filepath to controlfile with new path to media files
+                                newfilepath = filepath.replace(only_filename, subfiles_match_name)
+
+                                # A
+                                match.append((newfilepath, conversation_id_cached, conversation_serverid_cached))
+                                insert_cached_files(storedata, newfilepath, conversation_id_cached, conversation_serverid_cached)
+                        else:
+                            match.append((filepath, conversation_id_cached, conversation_serverid_cached))
+                            insert_cached_files(storedata, filepath, conversation_id_cached,
+                                                conversation_serverid_cached)
+
+        except Exception as e:
+            error = "ERROR - " + str(
+                traceback.format_exc() + "\n" + e.__doc__)
+            write_to_log(error)
+    print()
     return match
 
 
@@ -485,7 +609,9 @@ def check_cachecontroller(database):
 
         return True
     except Exception as e:
-        write_to_log("ERROR - " + str(e))
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
+        write_to_log(error)
         return False
 
 
@@ -514,7 +640,9 @@ def check_primarydocobjects(database):
         write_to_log("INFO - Found " + str(count_usernames_raw) + " raw users")
         return count_usersnames, count_usernames_raw, True
     except Exception as e:
-        write_to_log("ERROR - "+str(e))
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
+        write_to_log(error)
         return 0, 0, False
 
 
@@ -535,7 +663,9 @@ def check_arroyo(database):
         row_exists_count(database, 'conversation', 'client_conversation_id')
         return count, True
     except Exception as e:
-        write_to_log("ERROR - Exception occured "+str(e))
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
+        write_to_log(error)
         return 0, False
 
 
@@ -551,7 +681,9 @@ def check_contentmanager(database):
         count = row_exists_count(database, 'CONTENT_OBJECT_TABLE', key)
         return count, True
     except Exception as e:
-        write_to_log("ERROR - " + str(e))
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
+        write_to_log(error)
         return 0, False
 
 
@@ -646,7 +778,7 @@ def get_attachment(args, files, con, proto_string, timea):
 
                         # If a filename can be found in the blob add it in a tuple to matching list
                         if filename in dblob:
-                            print('SUCCESS - Found link with key and file\n')
+                            #print('SUCCESS - Found link with key and file\n')
                             match.append((string, iii))
 
                         # Check if file is a key
@@ -778,12 +910,8 @@ def get_convos(conn, msg_id, args, timea):
 
         return conv
     except Exception as e:
-        error = """
-        =========================
-        ERROR - iPhone_funcs.py -> get_convos
-        %s
-        =========================
-        """ % e
+        error = "ERROR - " + str(
+            traceback.format_exc() + "\n" + e.__doc__)
         write_to_log(error)
         return
 
@@ -895,30 +1023,3 @@ def get_contentmanagers_largest(input_path, output_path):
             return manager[0], y
 
         return None
-
-def get_userinfo(preferences, scdb27):
-    """
-    Connects to preferences.sqlite, scdb-27.sqlite3 and extracts user info
-    :return:
-    """
-    def get_pref(preferences):
-        """
-        Documents\global_scoped\global-scoped-preferences\preferences.sqlite
-        :return:
-        """
-        table = "docprefitem"
-        row = "key"
-        key_mobilnumber = "SCLastLoginUserSCPhoneNumberKey"
-        key_username = "SCLastLoginUsernameKey"
-
-        qr = "SELECT p FROM " + table + " WHERE key LIKE SCLastLoginUser"
-
-
-
-
-    def get_scdb27(scdb27):
-        """
-        :return:
-        """
-        table = "ZGALLERYPROFILE"
-        row = "ZUSERID"

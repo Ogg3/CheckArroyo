@@ -7,6 +7,8 @@ from iPhone_funcs import *
 from android_funcs import *
 import sqlite3
 
+__version__ = "0-6-9"
+
 def main():
     parser = argparse.ArgumentParser(description='CheckArroyo: Snapchat chat parser.')
 
@@ -17,6 +19,10 @@ def main():
                         help='Select mode, IOS - iPhone, AND - Android, ARY - only arroyo')
     parser.add_argument('-c', '--check_attachmets', required=False, action="store",
                         help='Select if attachments should be checked; Y (Yes) or N (No)')
+    parser.add_argument('-v', '--verbose', required=False, action="store_true",
+                        help='Display more output')
+    #parser.add_argument('-e', '--expert_mode', required=False, action="store_true",
+                        #help='The HTML report will now contain more unfiltered data')
     parser.add_argument('-t1', '--time_start', required=False, action="store", help='Time range start. Ex: 2021-01-01')
     parser.add_argument('-t2', '--time_stop', required=False, action="store", help='Time range stop. Ex: 2021-01-01')
     parser.add_argument('-msg', '--msg_id', required=False, action="store",
@@ -25,6 +31,8 @@ def main():
     args = parser.parse_args()
 
     input_path = args.input_path
+    global verbose
+    verbose = args.verbose
 
     # iPhone mode
     if args.mode == "IOS":
@@ -34,6 +42,9 @@ def main():
             return
         else:
             output_path = os.path.abspath(args.output_path)
+
+            if output_path[1] == ':': output_path = '\\\\?\\' + output_path.replace('/', '\\')
+
         if output_path is None:
             parser.error('No OUTPUT folder selected. Run the program again.')
             return
@@ -42,6 +53,9 @@ def main():
             return
         else:
             input_path = os.path.abspath(args.input_path)
+
+            if input_path[1] == ':': input_path = '\\\\?\\' + input_path.replace('/', '\\')
+
         if not os.path.exists(input_path):
             parser.error('INPUT file does not exist! Run the program again.')
             return
@@ -53,7 +67,9 @@ def main():
         try:
             writeHtmlReport(args)
         except Exception as e:
-            write_to_log(e)
+            error = "ERROR - " + str(
+                traceback.format_exc() + "\n" + e.__doc__)
+            write_to_log(error)
 
     # Android mode
     elif args.mode == "AND":
@@ -63,6 +79,9 @@ def main():
             return
         else:
             output_path = os.path.abspath(args.output_path)
+
+            if output_path[1] == ':': output_path = '\\\\?\\' + output_path.replace('/', '\\')
+
         if output_path is None:
             parser.error('No OUTPUT folder selected. Run the program again.')
             return
@@ -71,6 +90,9 @@ def main():
             return
         else:
             input_path = os.path.abspath(args.input_path)
+
+            if input_path[1] == ':': input_path = '\\\\?\\' + input_path.replace('/', '\\')
+
         if not os.path.exists(input_path):
             parser.error('INPUT file does not exist! Run the program again.')
             return
@@ -82,7 +104,9 @@ def main():
         try:
             writeHtmlReport(args)
         except Exception as e:
-            write_to_log(e)
+            error = "ERROR - " + str(
+                traceback.format_exc() + "\n" + e.__doc__)
+            write_to_log(error)
 
     # If only arroyo database if available
     elif args.mode == "ARY":
@@ -112,7 +136,9 @@ def main():
         try:
             writeHtmlReport(args)
         except Exception as e:
-            write_to_log(e)
+            error = "ERROR - " + str(
+                traceback.format_exc() + "\n" + e.__doc__)
+            write_to_log(error)
 
     # If no mode selected
     else:
@@ -158,8 +184,9 @@ def pars_data(args, IO_paths, GUI_check):
             conn_arroyo = sqlite3.connect(arroyo)
 
             # Check if arroyo is usable
-            info = "INFO - Checking " + str(arroyo)
-            write_to_log(info)
+            if verbose:
+                info = "INFO - Checking " + str(arroyo)
+                write_to_log(info)
             messages_count, Carroyo = check_arroyo(arroyo)
 
             if Carroyo:
@@ -185,7 +212,7 @@ def pars_data(args, IO_paths, GUI_check):
             info = "INFO - Filtering for " + args.msg_id
             write_to_log(info)
 
-        info = "INFO - Found conversations " + str(convons)
+        info = "INFO - "+ str(convons) +"Found conversations"
         write_to_log(info)
 
         # Set var
@@ -210,7 +237,15 @@ def pars_data(args, IO_paths, GUI_check):
                 nr = nr + 1
                 print("\rParsed " + str(nr) + " out of " + str(messages_count) + " messages\n", flush=True, end='')
 
-                # Rename list
+                raw_timestamp = i[7]
+
+                # Check if time filter is applied
+                res = check_time(raw_timestamp, args)
+
+                # Content type
+                ctype = i[13]
+                ctype_string = check_content_type(i[13])
+
                 client_conversation_id = i[0]
                 client_message_id = i[1]
                 server_message_id = i[2]
@@ -221,26 +256,20 @@ def pars_data(args, IO_paths, GUI_check):
                 creation_timestamp = i[7]
                 read_timestamp = i[8]
                 sent_by_snapchat_id = i[16]
-
-                # Check if time filter is applied
-                res = check_time(creation_timestamp, args)
-
-                # Content type
-                ctype = i[13]
-                ctype_string = check_content_type(ctype)
+                Message_encoded = ParseProto(i[5])
 
                 # Check for content type and decode
-                proto_string = proto_to_msg(message_content)
-                string_list = decode_string(proto_string, message_content)
+                proto_string = proto_to_msg(i[5])
+                string_list = decode_string(proto_string, i[5])
 
                 # Check time flag
                 if res:
 
+                    sent_by_snapchat_id = i[16]
                     # if a text message was found
-                    if ctype == 1:
-                        insert_message(store_data,
+                    insert_message(store_data,
                                    conv_id,
-                                   sent_by_username,
+                                   sent_by_snapchat_id,
                                    sent_by_snapchat_id,
                                    ctype_string,
                                    message_content,
@@ -248,21 +277,7 @@ def pars_data(args, IO_paths, GUI_check):
                                    string_list,
                                    client_message_id,
                                    server_message_id,
-                                   attachment_id,
-                                   creation_timestamp,
-                                   read_timestamp)
-                    else:
-                        insert_message(store_data,
-                                   conv_id,
-                                   sent_by_username,
-                                   sent_by_snapchat_id,
-                                   ctype_string,
-                                   message_content,
-                                   Message_encoded,
-                                   string_list,
-                                   client_message_id,
-                                   server_message_id,
-                                   attachment_id,
+                                   -1,
                                    creation_timestamp,
                                    read_timestamp)
 
@@ -302,33 +317,12 @@ def writeHtmlReport(args):
         args = GUI_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6])
         info = "INFO - Using GUI"
     except:
-        try:
-            a = args['inputfile']
-            GUI_check = True
-            if args['IOS']:
-                mode = 'IOS'
-            elif args['AND']:
-                mode = 'AND'
-            elif args['ARY']:
-                mode = 'ARY'
-            if args['S']:
-                attachment = 'S'
-            elif args['F']:
-                attachment = 'F'
-
-            if args['-time_start-'] == "" and args['-time_stop-'] == "":
-                args['-time_start-'] = None
-                args['-time_stop-'] = None
-
-            if args['msg_id'] == "":
-                args['msg_id'] = None
-
-            args = GUI_args(args['inputfile'], args['outputfolder'], attachment, mode, args['-time_start-'], args['-time_stop-'], args['msg_id'])
-            info = "INFO - Using new GUI"
-        except:
-            info = "INFO - Using CLI"
+        info = "INFO - Using CLI"
 
     output = IO_paths(args)
+
+    write_to_log("INFO - Version " + str(__version__))
+
     write_to_log(info)
 
     # Pars data and store in database
@@ -351,170 +345,30 @@ def writeHtmlReport(args):
     info = "INFO - Writing html reports"
     write_to_log(info)
 
+    convos = 0
+
     # For every conversation
     for x in parsde_data:
+        convos += 1
+
+        print("\rINFO - writing conversation: " + str(convos) + " out of " + str(len(parsde_data)), flush=True, end='')
+
         msg = 0
         Attatchments = 0
 
-        info = 'INFO - writing conversation: ' + x
-        write_to_log(info)
+        #info = 'INFO - writing conversation: ' + x
+        #write_to_log(info)
 
         # Write html report
         with open(IO_paths.report_convos + x + "-HTML-Report.html", "w") as f:
 
-            JavascriptFunc = """
-            <script>
-            function hide(div){
-                var x = document.getElementById(div);
-                if(x.style.display === "none"){
-                    x.style.display = "block";
-                }
-                else{
-                    x.style.display = "none";
-                }
-            }
-            </script>
-
-            <style>
-
-                .column {
-                    float: left;
-                    width: 75%;
-                }
-                table, tbody, tr,th, td{
-                    border: 1px solid black;
-                    word-wrap: break-word;
-                    overflow-warp: break-word;
-                    max-width: 1080px;
-
-                }
-                table{
-                    float: center;
-
-                }
-
-                .color1{
-                    background: #e0e0e0;
-                }
-
-                .color2{
-                    background: #d4d4d4;    
-                }
-
-                .column-stats {
-                    float: left;
-                    width: 50%; 
-                }
-
-
-                /*sticky navbar */
-                #navbar {
-                  overflow: hidden;
-                  background-color: #333;
-                }
-
-                #navbar a {
-                  float: left;
-                  display: block;
-                  color: #000000;
-                  text-align: center;
-                  text-decoration: none;
-                  font-size: 17px;
-                }
-
-                .sticky {
-                  position: fixed;
-                  top: 0;
-                  width: 100%;
-                }
-
-                .sticky + .content {
-                  padding-top: 40px;
-                }
-
-
-
-                /*sökruta */ 
-
-                .topnav a.active {
-                  background-color: #2196F3;
-                  color: white;
-                }
-
-                .topnav .search-container {
-                  float: left;
-                }
-
-                .topnav input[type=text] {
-                  padding: 6px;
-                  margin-top: 8px;
-                  font-size: 17px;
-                  border: none;
-                }
-
-
-
-
-               /* Knapparna */
-
-                .accordion {
-                    background-color: #636363;
-                    color: #ffffff;
-                    cursor: pointer;
-                    padding: 18px;
-                    width: 100%;
-                    border: none;
-                    text-align: left;
-                    outline: none;
-                    font-size: 15px;
-                    transition: 0.4s;
-                }
-                */ hover som inte används just nu
-                .accordion:hover {
-                  background-color: #e0e0e0;
-                  color: black;
-                }
-                /*
-               mark {
-                    background: orange;
-                    color: black;
-                }
-            </style>
-            <!--   en navegering som inte används just nu
-            <div id="navbar">
-                <div class="topnav">
-                    <div class="search-container">
-                        <form action="/action_page.php">
-                            <input type="text" value="test">
-                        </form>
-                    </div> 
-                </div>
-            </div>
-            <script type="text/javascript">  
-                $(function () {
-                    $("input").on("input.highlight", function () {
-                        // Determine specified search term
-                        var searchTerm = $(this).val();
-                        // Highlight search term inside a specific context
-                            $("#context").unmark().mark(searchTerm,
-                            {
-                                "acrossElements": true,
-                                "separateWordSearch": false,
-                            }
-                        );
-                    }).trigger("input.highlight").focus();
-                });
-            </script>
-            -->
-        """
-            f.write(JavascriptFunc)
 
             # Select all messages from a certain conversation
             qr = "SELECT * FROM 'messages' WHERE Conversation_id LIKE '%s' ORDER BY Timestamp_sent ASC" % x
             curs = conn.execute(qr)
 
-            # Only write button once
-            check = False
+            f.write(html_start())
+            check = True
             for i in curs:
 
                 # Set database vars
@@ -523,7 +377,7 @@ def writeHtmlReport(args):
                 # Check if username is owner
                 if part:
                     if i[1] == owner:
-                        sent_by_username = i[1]+" (OWNER)"
+                        sent_by_username = i[1]
                     else:
                         sent_by_username = i[1]
                 else:
@@ -533,59 +387,21 @@ def writeHtmlReport(args):
                 message_decoded = i[4]
                 message_og_id = i[5]
                 Server_og_id = i[6]
-                attachments_id = i[7]
+                attachments_ids = i[7]
                 timestamp_sent_raw = i[8]
                 timestamp_recived_raw = i[9]
 
-                if check == False:
-                    Start = """
-    <nav>
-        <nav class="content"> 
-    
-                    <button class="accordion"('%s')">%s</button>
-                    <div id="%s" style="display:in-line;">
-                        <table>
-    
-    """ % (conversation_id, conversation_id, conversation_id)
-                    # Only write button once
-                    f.write(Start)
 
-#----------------------------------------Participants------------------------------------------------------------------
-                    if args.mode != "ARY" and part:
-                        Table_Header1 = """
-                            <tbody>
-                                <tr>
-                                    <tr>
-                                        <th class="color1"><b>Participants</b></th>
-                                    </tr>
-                            """
-                        f.write(Table_Header1)
+                if check:
+                    parties = get_participants(database, conversation_id)
+                    for username, snapchat_id in parties:
+                        f.write(html_participants(username, snapchat_id))
+                    check = False
 
-                        parties = get_participants(database, conversation_id)
-
-                        # Get participants of a chat from database
-                        for username, snapchat_id in parties:
-                            data = """
-                                    <tr>
-                                        <th>%s, %s</th>
-                                    </tr>
-                            """ % (username, snapchat_id)
-
-                            f.write(data)
-
-                        # ENd of Participants
-                        Table_ender1 = """
-                                </tr>
-                            </tbody>
-                        """
-                        f.write(Table_ender1)
-#--------------------------------------------------------------------------------------------------------------------
-                check = True
-
-#--------------------------------------Message metadata----------------------------------------------------------------
                 timestamp_sent, timestamp_recived = get_timestamp(database, message_og_id, timestamp_sent_raw)
 
                 if i[1] == owner:
+                    f.write(html_right_start([sent_by_snapchat_id, message_og_id, Server_og_id, message_decoded]))
                     timestamp_recived_modified = ""
                 else:
 
@@ -594,41 +410,14 @@ def writeHtmlReport(args):
                     else:
                         timestamp_recived_modified = "Read: "+timestamp_recived+" localtime"
 
-                Table_Header = """
-                        <tbody>
-                            <tr>
-                                <tr>
-                                    <th class="color1"><b> %s </b> Created: %s localtime %s</th>
-                                </tr>
-                                <tr>
-                                    <th class="color2"> %s, Message ID: %s Server ID: %s </th>
-                                </tr>
-                            </tr> 
-    
-    """ % (sent_by_username, timestamp_sent, timestamp_recived_modified, content_type, message_og_id, Server_og_id)
-
-                # Header for msg
-                f.write(Table_Header)
-    #--------------------------------------------------------------------------------------------------------------------
+                    f.write(html_left_start([sent_by_snapchat_id, message_og_id, Server_og_id, message_decoded]))
 
                 msg = msg + 1
 
-                # Write strings that where found
-                Table_Data = """
-                                        <tr>    
-                                            <td> %s </td>
-            """ % (message_decoded)
-                f.write(Table_Data)
-                Table_end = """
-                                            </tr>
-                                    </tbody>
-                                        <tbody class="">
-                            """
-                f.write(Table_end)
 
                 # Check if messages has an attachment
-                if content_type != "Text message" and attachments_id != -1:
-                    attachments = get_attachments(database, attachments_id)
+                if content_type != "Text message" and attachments_ids != -1:
+                    attachments = get_attachments(database, attachments_ids)
 
                     # Check flags
                     if args.check_attachmets == "Y" and (args.mode == "AND" or args.mode == "IOS"):
@@ -640,76 +429,35 @@ def writeHtmlReport(args):
                             # Write attachments and key to html report and link to the extracted file
                             for image, file_type in attachments:
 
-                                Atta = """
-                                            <tr>
-                                                <th class="color1">Attatchment</th>
-                                            </tr>
-    
-                                    """
-                                f.write(Atta)
-
                                 if file_type == "PIC":
-                                    Atta_Data = """
-                                                <tr>
-                                                    <td> <img src="../%s" style="max-height:400; max-width:600; align:left;" alt=""></img></td>
-                                                </tr>
-                                                <tr>
-                                                    <td> %s </td>
-                                                </tr>
-            """ % (image, image)
+                                    f.write(html_pic(image))
 
                                 elif file_type == "MOV":
-                                    Atta_Data = """
-                                                <tr>
-                                                    <td> <video src="../%s" style="max-height:400; max-width:600; align:left;" alt controls></video> </td>
-                                                </tr>
-                                                <tr>
-                                                    <td> %s </td>
-                                                </tr>
-                                                """ % (image, image)
-                                else:
-                                    Atta_Data = """
-                                                <tr>
-                                                    <td> FILE TYPE COULD NOT BE DETERMINED, DISPLAYING AS BOTH PICTURE AND VIDEO </td>
-                                                </tr>
-                                                <tr>
-                                                    <td> <img src="../%s" style="max-height:400; max-width:600; align:left;" alt=""></img></td>
-                                                </tr>
-                                                <tr>
-                                                    <td> <video src="../%s" style="max-height:400; max-width:600; align:left;" alt controls></video> </td>
-                                                </tr>
-                                                <tr>
-                                                    <td> %s </td>
-                                                </tr>
-                                                """ % (image, image, image)
-                                f.write(Atta_Data)
+                                    f.write(html_video(image))
 
-            End = """
-                        </tbody>        
-                    </table>
-                </div>
-    
-    </nav>
-    </nav>
-    
-    
-    <script>
-    window.onscroll = function() {myFunction()};
-    var navbar = document.getElementById("navbar");
-    var sticky = navbar.offsetTop;
-    
-    function myFunction() {
-        if (window.pageYOffset >= sticky) {
-            navbar.classList.add("sticky")
-        } 
-        else {
-            navbar.classList.remove("sticky");
-        }
-    }
-    </script>
-    
-    """
-            f.write(End)
+                                elif file_type == "CONTROL FILE":
+                                    pass
+                                    # TODO
+
+                                elif file_type == "COMPRESSED":
+                                    pass
+                                    # TODO
+
+                                else:
+                                    f.write(html_unknown())
+                                    f.write(html_video(image))
+                                    f.write(html_pic(image))
+
+                # Is a text message
+                elif content_type == "Text message":
+                    f.write(html_text(message_decoded))
+
+                if i[1] == owner:
+                    f.write(html_right_end(sent_by_username, content_type, timestamp_sent))
+                else:
+                    f.write(html_left_end(sent_by_username, content_type, timestamp_sent, timestamp_recived_modified))
+
+            f.write(html_end())
 
         with open(IO_paths.report_file, "a") as a:
 

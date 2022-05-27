@@ -65,18 +65,14 @@ def android_mode(args, IO_paths, GUI_check, store_data, start_time):
 
         if Carroyo:
             info = """
-                        ===================================
-                        SUCCESS - Arroyo passed all checks!
-                        ===================================
+SUCCESS - arroyo passed all checks!
                         """
-            write_to_log(info)
+            write_to_log(outputcolors(info, True, True))
         else:
             info = """
-                        ===================================
-                        WARNING - Arroyo did not pass all checks!
-                        ===================================
+WARNING - arroyo did not pass checks
                         """
-            write_to_log(info)
+            write_to_log(outputcolors(info, False, True))
 
             info = "INFO - Exiting"
             write_to_log(info)
@@ -94,20 +90,16 @@ def android_mode(args, IO_paths, GUI_check, store_data, start_time):
 
         if Cmain:
             info = """
-                        ===================================
-                        SUCCESS - main.db passed all checks!
-                        ===================================
-                        """
+SUCCESS - main.db passed all checks!
+                                    """
+            write_to_log(outputcolors(info, True, True))
             partCheck = True
-            write_to_log(info)
         else:
             info = """
-                        ===================================
-                        SUCCESS - main.db did not pass all checks!
-                        ===================================
-                        """
+WARNING - main.db did not pass checks
+                                    """
+            write_to_log(outputcolors(info, False, True))
             partCheck = False
-            write_to_log(info)
 
         info = "INFO - Checking core.db"
         write_to_log(info)
@@ -119,18 +111,15 @@ def android_mode(args, IO_paths, GUI_check, store_data, start_time):
 
         if Ccore:
             info = """
-                        ===================================
-                        SUCCESS - core.db passed all checks!
-                        ===================================
-                        """
+SUCCESS - core.db passed all checks!
+                                                """
+            write_to_log(outputcolors(info, True, True))
             content_check = True
-            write_to_log(info)
         else:
             info = """
-                        ===================================
-                        SUCCESS - core.db did not pass all checks!
-                        ===================================
-                        """
+WARNING - core.db did not pass checks
+                                                """
+            write_to_log(outputcolors(info, False, True))
             content_check = False
             write_to_log(info)
 
@@ -151,7 +140,7 @@ def android_mode(args, IO_paths, GUI_check, store_data, start_time):
             info = "INFO - Filtering for " + args.msg_id
             write_to_log(info)
 
-        info = "INFO - Found conversations " + str(convons)
+        info = "INFO - Found " + str(len(convons)) + " conversations"
         write_to_log(info)
 
     else:
@@ -493,15 +482,6 @@ def link_user_convo(convID, conn, MainPath):
         errorstring = "ERROR - Could not check participants for " + str(convID) + " using " + MainPath + " " + str(e)
         write_to_log(errorstring)
 
-def local_ref_media(files, ):
-    """
-    Snapchat on android seems to store info about localy referenced media in arroyo.db->conversation_message->local_message_content_id
-    content://com.snapchat.android.provider/media-session/
-    ?sendSource=CAMERA&forceUpload=true&isTimeline=false&isFromMemories=false.
-
-    """
-
-    return
 
 def check_keys_proto_Android(args, files, con, proto_string, timea):
     """
