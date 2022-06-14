@@ -19,8 +19,6 @@ def main():
                         help='Select mode, IOS - iPhone, AND - Android, ARY - only arroyo')
     parser.add_argument('-c', '--check_attachmets', required=False, action="store",
                         help='Select if attachments should be checked; Y (Yes) or N (No)')
-    parser.add_argument('-v', '--verbose', required=False, action="store_true",
-                        help='Display more output')
     #parser.add_argument('-e', '--expert_mode', required=False, action="store_true",
                         #help='The HTML report will now contain more unfiltered data')
     parser.add_argument('-t1', '--time_start', required=False, action="store", help='Time range start. Ex: 2021-01-01')
