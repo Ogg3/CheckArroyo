@@ -175,6 +175,9 @@ class zipper(object):
             return
 
 
+"""
+Logging
+"""
 def outputcolors(string, color):
     """
     string: string to change
@@ -192,7 +195,6 @@ def outputcolors(string, color):
     # Add bold
     attr.append("1")
     return "\x1b[%sm%s\x1b[0m" % (';'.join(attr), string)
-
 
 def info(message):
     """

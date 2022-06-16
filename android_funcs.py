@@ -431,17 +431,13 @@ def link_snapchatid_username(snapchatID, MainPath):
     try:
         conn = sqlite3.connect(MainPath)
 
-        part = []
-
         # query who is participating in conv
         qr = "SELECT username FROM Friend WHERE userId == '%s'" % snapchatID
 
         curs1 = conn.execute(qr)
 
         for j in curs1:
-            part.append(j[0])
-
-        return part
+            return j[0]
 
     except Exception as e:
         errorstring = "ERROR - Could not find user " + str(snapchatID) + " using " + MainPath + " " + str(e)
