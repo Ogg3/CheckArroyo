@@ -26,6 +26,13 @@ import os
 import datetime
 import traceback
 from zipfile import ZipFile
+import tarfile
+from parse3 import *
+import re
+
+
+def get_input_type(file):
+    pass
 
 
 class IO_paths():
@@ -41,6 +48,7 @@ class IO_paths():
     output_path = None
     report_time = ""
     research_txt = ""
+    store_Data = ""
 
     def __init__(self, args):
         # Create timestamp for when report was created
@@ -80,57 +88,101 @@ class IO_paths():
             args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "log.txt")
         IO_paths.report_file = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "Report.html"
         IO_paths.report_convos = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "conversation-reports" + "\\"
+        # Connect to database
+        self.store_data = args.output_path + "\\" + "CheckArroyo-report-" + IO_paths.report_time + "\\" + "store_data.db"
+
+
+class proto():
+
+    def __init__(self, protomessage):
+        self.protomessage = protomessage
+
+    def parse_proto(self):
+        return ParseProto(self.protomessage)
+
+    def proto_to_msg(self):
+        """
+        Turn a raw protobuf file to find a msg string
+        """
+        messages_found = []
+        messages = self.parse_proto()
+
+        res = self.find_string_in_dict(messages)
+        for k, v in res:
+            if "string" in k:
+                messages_found.append(v)
+
+        return messages_found
+
+    def find_string_in_dict(self, data):
+        """
+        return a dict of a nested dict
+        """
+        for k, v in data.items():
+            if isinstance(v, dict):
+                yield k, v
+                yield from self.find_string_in_dict(v)
+            else:
+                yield k, v
+
+    def check_list_for_empty(self, lst):
+        """
+        Check if list contains only empty strings
+        """
+        for i in lst:
+            if i != "":
+                return False
+
+        return True
+
+    def decode_string(self, proto_string, bin_string):
+        """
+        Decode a list of strings
+        Emojis are not supported
+        """
+        strings = []
+
+        try:
+            # Check if any string messages where found
+            if proto_string is not None:
+
+                # Check if multiple strings where found
+                if type(proto_string) is list:
+
+                    for i in proto_string:
+                        # Encode because reasons
+                        tmp = i.encode('cp1252', 'xmlcharrefreplace')
+                        tmp = tmp.decode('cp1252')
+
+                        strings.append(tmp)
+            else:
+                strings.append("".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore'))))
+
+            # Check if list is only empty strings
+            if self.check_list_for_empty(strings):
+                fallback = "".join(re.findall("[a-zA-Z0-9äöåÄÖÅ ]+", bin_string.decode('utf-8', 'ignore')))
+                return ["WARNING - No string found, displaying raw data: " + str(fallback)]
+
+            return strings
+        except Exception as e:
+            print(str(e))
+            print("ERROR - Failed to encode string, proto_string: " + str(proto_string) + ", bin_string: " + str(
+                bin_string))
 
 
 class zipper(object):
 
-    def __init__(self):
-        pass
-
-    def checkandextract(args, string, mode):
-        """
-        Searches for a file with name and extracts them
-        """
-        check = checkinzip(args, string, mode)
-        if check is None:
-            return None
-        else:
-            effromzip(check[0])
-            return os.path.abspath(IO_paths.report_folder + '/' + check[0])
-
-    def checkforfile21(self):
-        """
-        Checks zipfile from files with the name string and if the name is larger than 21 in length
-        returns a list with paths to those files
-        """
-        path = os.path.abspath(IO_paths.input_path)
-
-        data = []
-
-        with ZipFile(path, "r") as f:
-            for i in f.namelist():
-
-                a = i.split('/')
-
-                if len(a[len(a) - 1]) >= 21 and i[len(i) - 1] != "/":
-                    data.append(i)
-            f.close()
-
-        if data == []:
-            return None
-        else:
-            return data
-
+    def __init__(self, zipfile):
+        self.zipfile = zipfile
 
     def find_file(self, filename):
         """
         Find files in zipfile
         """
-        path = os.path.abspath(IO_paths.input_path)
 
         data = []
 
-        with ZipFile(path, "r") as f:
+        with ZipFile(self.zipfile, "r") as f:
             for i in f.namelist():
                 new = i.split("/")
                 if filename == new[len(new) - 1] and i[len(i) - 1] != "/":
@@ -146,11 +198,10 @@ class zipper(object):
         """
         Find folder in zipfile
         """
-        path = os.path.abspath(IO_paths.input_path)
 
         data = []
 
-        with ZipFile(path, "r") as f:
+        with ZipFile(self.zipfile, "r") as f:
             for i in f.namelist():
                 if foldername in i:  # and i[len(i) - 1] != "/":
                     data.append(i)
@@ -161,18 +212,34 @@ class zipper(object):
         else:
             return data
 
+
     def extract_file(self, file):
         """
         Extract file from zip to outputpath
         """
         try:
-            with ZipFile(IO_paths.input_path, 'r') as f:
+            with ZipFile(self.zipfile, 'r') as f:
                 f.extract(file, IO_paths.report_folder)
             f.close()
             return os.path.abspath(IO_paths.report_folder + '/' + file)
         except Exception as e:
             error(e)
             return
+
+
+class tarrer():
+
+    def __init__(self, tarfile):
+        self.tarfile = tarfile
+
+    def find_file(self, filename):
+        pass
+
+    def find_folder(self, foldername):
+        pass
+
+    def extract_file(self, filename):
+        pass
 
 
 """
@@ -201,7 +268,7 @@ def info(message):
     Write a information message to the logfile and stdout
     """
     with open(IO_paths.log_file, 'a') as f:
-        print(message)
+        print("INFO - "+message)
         f.write(str(message) + IO_paths.nl)
 
 
@@ -239,6 +306,84 @@ def success(message):
     Write a success message to the logfile and stdout
     """
     with open(IO_paths.log_file, 'a') as f:
-        error = "WARNING - " + str(message)
+        error = "SUCCESS - " + str(message)
         print(outputcolors(error, "Green"))
         f.write(str(error) + IO_paths.nl)
+
+
+def compare_magic_bytes(file):
+    """
+    Reads in a file and gets the file header
+    returns string with type of file
+    :param file:input file
+    :return:string
+    """
+
+    with open(file, "rb") as f:
+        header = f.read(10)
+
+        # JPG
+        if header[6:] == b"JFIF":
+            return "PIC"
+        # PNG
+        elif header[1:4] == b"PNG":
+            return "PIC"
+        # ?MP4?
+        elif b"ftypmp" in header:
+            return "MOV"
+        elif header[:4] == b"RIFF":
+            return "PIC"
+        elif header[:1] == b"\n" and header[2:8] == b"media~":
+            return "CONTROL FILE"
+        elif b'overlay~' in header:
+            return "CONTROL FILE"
+        elif b'thumbnai' in header:
+            return "CONTROL FILE"
+        elif header[:5] == b'\xff\xd8\xff\xfe\x00':
+            return "PIC"
+        elif header == b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" or header == b'':
+            return "EMPTY"
+        elif header == b'\x00\x00\x00 ftypis':
+            return "MOV"
+        elif header == b'PK\x03\x04\n\x00\x00\x08\x00\x00':
+            return "COMPRESSED"
+        else:
+            #print(header[:5])
+            warning("Unable to determine file type for: "+str(file))
+
+
+def check_content_type(int_ctype):
+    """
+    Check what type of content is being sent
+    """
+    if type(int_ctype) is int:
+        # 1 is text message
+        if int_ctype == 1:
+            return "Text message"
+        # 0 is snap
+        elif int_ctype == 0:
+            return "Snap"
+        # 2 is media
+        elif int_ctype == 2:
+            return "Media"
+        elif int_ctype == 3:
+            return "Video (Not Tested)"
+        # 4 is audio messages
+        elif int_ctype == 4:
+            return "Audio message"
+        elif int_ctype == 5:
+            return "Emoji"
+        elif int_ctype == 6:
+            return "Shared Location (Android Not Tested)"
+        elif int_ctype == 8:
+            return "Shared Location (Iphone Not Tested)"
+        elif int_ctype == 10:
+            return "Took screenshot"
+        elif int_ctype == 12:
+            return "Unsuccessful video call"
+        elif int_ctype == 13:
+            return "Unsuccessful voice call"
+        else:
+            return "Content type " + str(int_ctype)
+    else:
+        return "ERROR - scripts.check_ctype excpects a int, not " + str(type(int_ctype))
