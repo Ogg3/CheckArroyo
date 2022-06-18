@@ -29,10 +29,12 @@ from zipfile import ZipFile
 import tarfile
 from parse3 import *
 import re
+import sqlite3
+import pathlib
 
 
 def get_input_type(file):
-    pass
+    return pathlib.Path(file).suffix
 
 
 class IO_paths():
@@ -48,7 +50,7 @@ class IO_paths():
     output_path = None
     report_time = ""
     research_txt = ""
-    store_Data = ""
+    store_data = ""
 
     def __init__(self, args):
         # Create timestamp for when report was created
@@ -75,7 +77,6 @@ class IO_paths():
         with open(args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "raw_protobufs.txt", "w") as a:
             a.write("")
 
-        self.log_file = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "log.html"
         self.report_folder = args.output_path + "\\" + "CheckArroyo-report-" + report_time
         self.report_file = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "Report.html"
         self.report_convos = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "conversation-reports" + "\\"
@@ -90,6 +91,7 @@ class IO_paths():
         IO_paths.report_convos = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "conversation-reports" + "\\"
         # Connect to database
         self.store_data = args.output_path + "\\" + "CheckArroyo-report-" + IO_paths.report_time + "\\" + "store_data.db"
+
 
 
 class proto():
@@ -175,9 +177,49 @@ class zipper(object):
     def __init__(self, zipfile):
         self.zipfile = zipfile
 
-    def find_file(self, filename):
+    def find_file_all(self, filename):
         """
         Find files in zipfile
+        returns all matches for this file
+        """
+
+        data = []
+
+        with ZipFile(self.zipfile, "r") as f:
+            for i in f.namelist():
+                new = i.split("/")
+                if filename in new[len(new) - 1] and i[len(i) - 1] != "/":
+                    data.append(i)
+            f.close()
+
+        if data == []:
+            return None
+        else:
+            return data
+
+    def find_folder_all(self, foldername):
+        """
+        Find folder in zipfile
+        returns all matches for this foldername
+        """
+
+        data = []
+
+        with ZipFile(self.zipfile, "r") as f:
+            for i in f.namelist():
+                if foldername in i and i[len(i) - 1] == "/":
+                    data.append(i)
+            f.close()
+
+        if data == []:
+            return None
+        else:
+            return data
+
+    def find_file_exact(self, filename):
+        """
+        Find files in zipfile
+        returns all matches for this file
         """
 
         data = []
@@ -194,17 +236,21 @@ class zipper(object):
         else:
             return data
 
-    def find_folder(self, foldername):
+    def find_folder_exact(self, foldername):
         """
         Find folder in zipfile
+        returns all matches for this foldername
         """
 
         data = []
 
         with ZipFile(self.zipfile, "r") as f:
             for i in f.namelist():
-                if foldername in i:  # and i[len(i) - 1] != "/":
-                    data.append(i)
+                if foldername in i and i[len(i) - 1] == "/":
+                    split = i.split("/")
+                    for name in split:
+                        if name == foldername:
+                            data.append(i)
             f.close()
 
         if data == []:
@@ -213,33 +259,33 @@ class zipper(object):
             return data
 
 
-    def extract_file(self, file):
+    def extract_files(self, file_list):
         """
         Extract file from zip to outputpath
+        returns a list of path(s)
         """
         try:
+            paths=[]
             with ZipFile(self.zipfile, 'r') as f:
-                f.extract(file, IO_paths.report_folder)
+                for filename in file_list:
+                    f.extract(filename, IO_paths.report_folder)
+                    paths.append(os.path.abspath(IO_paths.report_folder + '/' + filename))
             f.close()
-            return os.path.abspath(IO_paths.report_folder + '/' + file)
+
+            return paths
         except Exception as e:
-            error(e)
+            error(e, True)
             return
+
+    def get_size_of_file(self, file):
+        with ZipFile(self.zipfile, "r") as f:
+            data = f.getinfo(file)
+            print(data)
+            f.close()
 
 
 class tarrer():
-
-    def __init__(self, tarfile):
-        self.tarfile = tarfile
-
-    def find_file(self, filename):
-        pass
-
-    def find_folder(self, foldername):
-        pass
-
-    def extract_file(self, filename):
-        pass
+    pass
 
 
 """
@@ -272,7 +318,7 @@ def info(message):
         f.write(str(message) + IO_paths.nl)
 
 
-def error(exception: Exception) -> None:
+def error(exception, fatal):
     """
     Write a error message to the logfile and stdout
     """
@@ -282,11 +328,12 @@ def error(exception: Exception) -> None:
         print(outputcolors(message, "Red"))
         return
 
-    exception = str(exception)
-
     with open(IO_paths.log_file, 'a') as f:
-        error = "ERROR - " + str(
-            traceback.format_exc() + "\n" + exception.__doc__)
+        if fatal:
+            error = "ERROR - " + str(
+                traceback.format_exc() + "\n" + exception.__doc__)
+        else:
+            error = "ERROR - "+str(exception)
         print(outputcolors(error, "Red"))
         f.write(str(error) + IO_paths.nl)
 

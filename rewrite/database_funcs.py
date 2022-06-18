@@ -42,7 +42,9 @@ class database():
             conn = sqlite3.connect('file:'+self.database+'?mode=ro', uri=True)
             return conn
         except Exception as e:
-            error(e)
+            warning("Could not connect to "+str(self.database))
+            error(e, True)
+            return False
 
     def execute_querie(self, querie):
         """
@@ -68,7 +70,7 @@ class database():
 
             return result
         except Exception as e:
-            error(e)
+            error(e, True)
 
 
     def get_freelistpages(self):
@@ -118,7 +120,7 @@ class database():
         if rownames != []:
             return len(rownames)
         else:
-            warning("{0} table {1} has no rownames".format(self.database, table))
+            warning("{0} table {1} has no rows".format(self.database, table))
 
     def get_row_position(self, table, rowname):
         rownames = self.execute_querie("PRAGMA table_info({})".format(table))
@@ -129,7 +131,142 @@ class database():
                 if name[1] == rowname:
                     return name[0]
         else:
-            warning("{0} table {1} has no rownames".format(self.database, table))
+            warning("{0} table {1} has no row names {2}".format(self.database, table, rowname))
+
+    def check_row(self, rowname, tablename):
+        if self.get_row_position(tablename, rowname) != "":
+            return True
+        else:
+            return False
+
+    def check_table(self, tablename):
+        if self.get_amount_rows(tablename) != 0:
+            return True
+        else:
+            return False
+
+
+class store_data():
+
+    def __init__(self, path):
+        self.path = path
+
+        # [id] INTEGER PRIMARY KEY,
+        conn = sqlite3.connect(self.path)
+
+        conn.execute('''
+                      CREATE TABLE IF NOT EXISTS metadata
+                      ( [executiontime] TEXT, 
+                      [conversations] TEXT, 
+                      [messages] TEXT,
+                      [textmessages] TEXT,
+                      [attachments] TEXT,
+                      [failedtextmessages] TEXT,
+                      [owner] TEXT)
+                      
+                      ''')
+
+        conn.execute('''
+                          CREATE TABLE IF NOT EXISTS Participants
+                          ( [Conversation] TEXT, [username] TEXT, [snapchat_id] TEXT)
+                          ''')
+
+        conn.execute('''
+                          CREATE TABLE IF NOT EXISTS messages
+                          ([client_conversation_id] text, 
+                          [sent_by_username] text, 
+                          [sent_by_snapchat_id] text, 
+                          [content_type] INTEGER,
+                          [message] TEXT, 
+                          [client_message_id] TEXT,
+                          [server_message_id] TEXT, 
+                          [attachments_id] INTEGER, 
+                          [creation_timestamp] TEXT, 
+                          [read_timestamp] TEXT,
+                          [message_raw] TEXT, 
+                          [message_dict] TEXT)
+                          ''')
+
+        conn.execute('''
+                          CREATE TABLE IF NOT EXISTS messages_attachments
+                          ( [attachments_id] INTEGER, 
+                          [filename] TEXT, 
+                          [contentmangare_key] TEXT, 
+                          [file_type] TEXT)
+                          ''')
+
+        conn.execute('''
+                          CREATE TABLE IF NOT EXISTS cached_files
+                          ( [path_to_file] TEXT, 
+                          [conversation_id] TEXT, 
+                          [server_message_id] TEXT)
+                          ''')
+
+        conn.commit()
+
+    def insert_cached_files(self, path_to_file, conversation_id, server_id):
+        """
+        Insert the cached files of a chat to data_store.db
+        :return:
+        """
+        try:
+            conn = sqlite3.connect(self.path)
+            c = conn.cursor()
+            c.execute("INSERT INTO cached_files VALUES(?, ?, ?)", (str(path_to_file), str(conversation_id), str(
+                server_id)))
+            conn.commit()
+        except Exception as e:
+            error(e, True)
+
+    def insert_participants(self, Conversation, username, snapchat_id):
+        """
+        Insert the participants of a chat to data_store.db
+        """
+        try:
+            conn = sqlite3.connect(self.path)
+            c = conn.cursor()
+            c.execute("INSERT INTO Participants VALUES(?, ?, ?)",
+                      (str(Conversation),
+                       str(username),
+                       str(snapchat_id)))
+            conn.commit()
+        except Exception as e:
+            error(e, True)
+
+    def insert_message(self,
+                       Conversation_id,
+                       sent_by_username,
+                       sent_by_snapchat_id,
+                       Content_type,
+                       Message_raw,
+                       Message_encoded,
+                       Message_decoded,
+                       Message_id,
+                       Server_og_id,
+                       Attachments_id,
+                       Timestamp_sent,
+                       Timestamp_recived,
+                       ):
+        try:
+            conn = sqlite3.connect(self.path)
+
+            conn.execute('INSERT INTO messages VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (str(Conversation_id),
+                                                                                             str(sent_by_username),
+                                                                                             str(sent_by_snapchat_id),
+                                                                                             str(Content_type),
+                                                                                             str(Message_decoded),
+                                                                                             str(Message_id),
+                                                                                             str(Server_og_id),
+                                                                                             str(Attachments_id),
+                                                                                             str(Timestamp_sent),
+                                                                                             str(Timestamp_recived),
+                                                                                             str(Message_raw),
+                                                                                             str(Message_encoded)))
+
+            conn.commit()
+        except Exception as e:
+            error(e, True)
+
 
 class arroyo_queries():
 
@@ -137,6 +274,14 @@ class arroyo_queries():
         self.snapchat_version = snapchat_version
         self.timefilter = timefilter
         self.systemtype = systemtype
+
+    def conversation_identifier(self):
+        return ['client_conversation_id', 'server_conversation_id', 'client_resolution_id']
+
+    def conversation_message(self):
+        return ['client_conversation_id', 'conversation_metadata', 'send_state_type', 'creation_timestamp',
+        'conversation_version', 'sync_watermark', 'tombstoned_at_timestamp', 'nullable_sync_watermark', 'has_more_messages',
+        'source_page', 'last_senders']
 
     def known_tables_and_rows(self):
         text="""
@@ -229,7 +374,8 @@ conversation_message"""
                 datetime.datetime.strptime(time1, dateformat)
                 datetime.datetime.strptime(time2, dateformat)
             except Exception as e:
-                error(e)
+                error(time1 + " or "+time2+" is not in correct format", False)
+                sys.exit(1)
             querie = """
             SELECT 
             client_conversation_id, 
@@ -314,4 +460,20 @@ conversation_message"""
         )
                     """
         return description
+
+class cachecontroller():
+
+    def __init__(self, snapchat_version, timefilter, systemtype):
+        self.snapchat_version = snapchat_version
+        self.timefilter = timefilter
+        self.systemtype = systemtype
+
+    def CACHE_FILE_METADATA(self):
+        return ['USER_ID', 'CACHE_KEY', 'STORAGE_TYPE', 'TYPE', 'FILE_SIZE_BYTES', 'TOTAL_DISK_USED_BYTES',
+         'KNOWN_CONTENT_LENGTH_BYTES', 'LAST_READ_TIMESTAMP_MILLIS', 'DELETED_TIMESTAMP_MILLIS', 'CHILDREN']
+
+    def CACHE_FILE_CLAIM(self):
+        return ['USER_ID', 'CACHE_KEY', 'MEDIA_CONTEXT_TYPE', 'EXTERNAL_KEY', 'IS_AUTHORITATIVE',
+     'EXPIRATION_TIMESTAMP_MILLIS', 'DELETED_TIMESTAMP_MILLIS']
+
 

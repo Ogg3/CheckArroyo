@@ -24,7 +24,7 @@ SOFTWARE.
 
 import argparse
 import webbrowser
-from iPhone_funcs import *
+from iphone_funcs import *
 from android_funcs import *
 import sqlite3
 from lib import *
@@ -33,6 +33,49 @@ __version__ = "0-7-0"
 
 IOS_supported_versions = ['11.12.0', ]
 Android_supported_versions = ['11.51.0.37', ]
+
+def main():
+
+    parser = argparse.ArgumentParser(description='CheckArroyo '+__version__+': Snapchat chat parser.')
+
+    parser.add_argument('-i', '--input_path', required=True, action="store", help='Path to snapchat dump.')
+    parser.add_argument('-o', '--output_path', required=True, action="store", help='Output folder path.')
+    parser.add_argument('-m', '--mode', required=True, action="store",
+                        help='Select mode, IOS - iPhone, AND - Android, ARY - only arroyo')
+    parser.add_argument('-s', '--snapchat_version', required=True, action="store",
+                        help='Select mode, IOS - iPhone, AND - Android, ARY - only arroyo')
+    parser.add_argument('-n', '--no_attachmets', required=False, action="store_true",
+                        help='Use if attachments should NOT be checked')
+    parser.add_argument('-c', '--custom_paths', required=False, action="store_true",
+                        help='Use to input custom paths to databases.')
+    parser.add_argument('-e', '--expert_mode', required=False, action="store_true",
+                        help='The HTML report will now contain more unfiltered data')
+    parser.add_argument('-v', '--verbose', required=False, action="store_true",
+                        help='The HTML report will now contain more unfiltered data')
+    parser.add_argument('-t', '--time_filter', required=False, action="store", help='Time range start. Ex: 2021-01-01 10:00:00 2022-02-02 20:00:00')
+    parser.add_argument('-msg', '--msg_id', required=False, action="store",
+                        help='Make report for only one conversation id')
+
+    args = parser.parse_args()
+
+    input_Type = get_input_type(args.input_path)
+    if input_Type == ".zip":
+        seeker = zipper(args.input_path)
+    elif input_Type == ".tar":
+        seeker = tarrer(args.input_path)
+    else:
+        parser.error("Unsupported file type!")
+        sys.exit(0)
+
+    if args.mode == "IOS":
+        iPhone_mode(args, seeker)
+    elif args.mode == "AND":
+        pass
+    elif args.mode == "ARY":
+        pass
+    else:
+        parser.error("Unknown mode!")
+
 
 def check_paths(parser, input_path, output_path):
     # Check so paths exists
@@ -59,47 +102,9 @@ def check_paths(parser, input_path, output_path):
         parser.error('OUTPUT folder does not exist! Run the program again.')
         return
 
-    # Write html report while finding content
-    try:
-        writeHtmlReport(args)
-    except Exception as e:
-        error(e)
 
 
-def main():
+if __name__ == "__main__":
+    main()
 
-    parser = argparse.ArgumentParser(description='CheckArroyo '+__version__+': Snapchat chat parser.')
-
-    parser.add_argument('-i', '--input_path', required=True, action="store", help='Path to snapchat dump.')
-    parser.add_argument('-o', '--output_path', required=True, action="store", help='Output folder path.')
-    parser.add_argument('-m', '--mode', required=True, action="store",
-                        help='Select mode, IOS - iPhone, AND - Android, ARY - only arroyo')
-    parser.add_argument('-s', '--snapchat_version', required=True, action="store",
-                        help='Select mode, IOS - iPhone, AND - Android, ARY - only arroyo')
-    parser.add_argument('-n', '--no_attachmets', required=False, action="store_true",
-                        help='Use if attachments should NOT be checked')
-    parser.add_argument('-c', '--custom_paths', required=False, action="store_true",
-                        help='Use to input custom paths to databases.')
-    parser.add_argument('-e', '--expert_mode', required=False, action="store_true",
-                        help='The HTML report will now contain more unfiltered data')
-    parser.add_argument('-v', '--verbose', required=False, action="store_true",
-                        help='The HTML report will now contain more unfiltered data')
-    parser.add_argument('-t', '--time_filter', required=False, action="store", help='Time range start. Ex: 2021-01-01 10:00:00 2022-02-02 20:00:00')
-    parser.add_argument('-msg', '--msg_id', required=False, action="store",
-                        help='Make report for only one conversation id')
-
-    args = parser.parse_args()
-
-    # Get flags
-    input_path = args.input_path
-    output_path = args.output_path
-    mode = args.mode
-    no_attachments = args.no_attachments
-    expert_mode = args.expert_mode
-    verbose = args.verbose
-    timefilterStart = args.time_start
-    custom_paths = args.custom_paths
-
-def parse_data(args):
-    pass
 
