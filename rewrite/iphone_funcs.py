@@ -23,6 +23,8 @@ SOFTWARE.
 """
 
 import os.path
+import sys
+
 from lib import *
 from database_funcs import *
 import re
@@ -40,11 +42,9 @@ def iPhone_mode(args, seeker):
     store = store_data(io.store_data)
 
     arroyo_qr = arroyo_queries(snapchat_version="", systemtype="", timefilter=args.time_filter)
-
-    arroyo_path = ""
-    primarydocobjects_path = ""
-    content_managers_paths = []
-    cachecontroller_path = ""
+    primarydocobjects_qr = primarydocobjects_queries(snapchat_version="", systemtype="", timefilter=args.time_filter)
+    contentmanagers_qr = contentmanagers_queries(snapchat_version="", systemtype="", timefilter=args.time_filter)
+    cachecontroller_qr = cachecontroller_queries(snapchat_version="", systemtype="", timefilter=args.time_filter)
 
     if args.custom_paths:
         paths = custom_paths()
@@ -58,34 +58,93 @@ def iPhone_mode(args, seeker):
         content_managers_paths = seeker.extract_files(seeker.find_file_all("contentManagerDb.db"))
         cachecontroller_path = seeker.extract_files(seeker.find_file_exact("cache_controller.db"))
 
+    # Check arroyo (Ay!)
     if len(arroyo_path) != 1:
         warning("Mutiple arroyo.db found")
 
     if args.verbose:
         info("Arroyo path: "+str(arroyo_path[0]))
-    check_arroyo(arroyo_path[0], arroyo_qr)
+
+    if not check_arroyo(arroyo_path, arroyo_qr):
+        warning("Arroyo did not pass checks, exiting!")
+        sys.exit(0)
+    else:
+        success("Arroyo passed checks!")
+
+    # Check primarydocobjects
+    if len(primarydocobjects_path) != 1:
+        warning("Mutiple primary.docobjects found")
+
+    if args.verbose:
+        info("primary.docobjects path: "+str(primarydocobjects_path[0]))
+
+    if not check_primarydocobjects(primarydocobjects_path, primarydocobjects_qr):
+        warning("Primarydocobjects did not pass checks!")
+    else:
+        success("Primarydocobjects passed checks!")
+
+    # Check contentmanagers
+    if len(content_managers_paths) != 1:
+        warning("Mutiple contentmanagers found")
+
+    if args.verbose:
+        info("Contentmanagers path: "+str(content_managers_paths))
+
+    contentmanagers = check_content_managers(content_managers_paths, contentmanagers_qr)
 
 
+    # Check cachecontroller
+    if len(cachecontroller_path) != 1:
+        warning("Mutiple arroyo.db found")
 
-def check_arroyo(path, arroyo_qr):
+    if args.verbose:
+        info("Cachecontrller path: "+str(cachecontroller_path[0]))
+
+    check_cachecontroller(cachecontroller_path, cachecontroller_qr)
+
+
+def check_snapchat_database(path, tablename, rownames):
     """
-    Check if arroyo.db is usable
+    Check if a database from input-source is usable
     """
-    conversation_message = arroyo_qr.conversation_message()
     data = database(path)
     if data.connect_readonly() != False:
-        if data.check_table("conversation_message") != False:
+        if data.check_table(tablename) != False:
 
-            for rowname in conversation_message:
-                if data.check_row(rowname=rowname, tablename="conversation_message") != False:
-                    return True
+            for rowname in rownames:
+                if data.check_row(rowname=rowname, tablename=tablename) != False:
+                    pass
                 else:
-                    warning(str(rowname)+" was not found in arroyo.db")
+                    warning(str(rowname)+" was not found in "+str(path))
                     return False
+            return True
         else:
-            warning("conversation_message was not found in arroyo.db")
+            warning(str(tablename)+" was not found in "+str(path))
+            return False
 
-def check_primarydocobjects(path):
+
+def check_arroyo(arroyo_path, arroyo_qr):
+
+    # Check if arroyo has the ciritcal tables
+    conversation_message = arroyo_qr.conversation_message(True)
+
+    if check_snapchat_database(arroyo_path[0], "conversation_message", conversation_message):
+        return True
+    else:
+        return False
+
+
+def check_primarydocobjects(primarydocobjects_path, primarydocobjects_qr):
+    pass
+
+def check_content_managers(content_managers_paths, content_managers_qr):
+    """
+    Because there is a large chance more then one contentmanagers exists the output is true if one database is usable.
+    There will be a warning for every database that is not usable tho
+    """
+    pass
+
+def check_cachecontroller(cachecontroller_path, cachecontroller_qr):
     pass
 
 

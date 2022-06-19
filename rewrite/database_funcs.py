@@ -84,6 +84,9 @@ class database():
         return freepages
 
     def get_tablenames(self):
+        """
+        Get all tablenames in database
+        """
         tables = self.execute_querie("SELECT name FROM sqlite_master WHERE type='table'")
 
         if tables != []:
@@ -92,7 +95,9 @@ class database():
             warning(self.database+" has no tables!")
 
     def get_rownames(self, table):
-
+        """
+        Get all rownames in a table
+        """
         rownames = self.execute_querie("PRAGMA table_info({})".format(table))
 
         if rownames != []:
@@ -107,6 +112,9 @@ class database():
             warning("{0} table {1} has no rownames".format(self.database, table))
 
     def get_amount_tables(self):
+        """
+        Get amount of tables in database
+        """
         tables = self.execute_querie("SELECT count(name) FROM sqlite_master WHERE type='table'")
 
         if tables != []:
@@ -115,6 +123,9 @@ class database():
             warning(self.database + " has no tables!")
 
     def get_amount_rows(self, table):
+        """
+        Get the amount of rows in given table
+        """
         rownames = self.execute_querie("PRAGMA table_info({})".format(table))
 
         if rownames != []:
@@ -123,6 +134,9 @@ class database():
             warning("{0} table {1} has no rows".format(self.database, table))
 
     def get_row_position(self, table, rowname):
+        """
+        Get the CID of a giver rowname in a table
+        """
         rownames = self.execute_querie("PRAGMA table_info({})".format(table))
 
         if rownames != []:
@@ -134,16 +148,35 @@ class database():
             warning("{0} table {1} has no row names {2}".format(self.database, table, rowname))
 
     def check_row(self, rowname, tablename):
+        """
+        Check if database has a rowname in tablename
+        """
         if self.get_row_position(tablename, rowname) != "":
             return True
         else:
             return False
 
     def check_table(self, tablename):
+        """
+        Check if database has more than 0 rows in tablename
+        """
         if self.get_amount_rows(tablename) != 0:
             return True
         else:
             return False
+
+    def get_structure(self):
+        """
+        Get the structure of a database including comments in the sql statments
+        """
+        data = self.execute_querie("SELECT sql FROM sqlite_master WHERE type='table'")
+        for table in self.get_tablenames():
+            print(table)
+            for i in data:
+                if "--" in i and table == i.split(" ")[2]:
+                    print(i)
+            print(self.get_rownames(table))
+            print()
 
 
 class store_data():
@@ -275,13 +308,20 @@ class arroyo_queries():
         self.timefilter = timefilter
         self.systemtype = systemtype
 
-    def conversation_identifier(self):
+    def conversation_identifier_rownames(self, critical):
+        if critical:
+            return ['client_conversation_id', 'server_conversation_id']
         return ['client_conversation_id', 'server_conversation_id', 'client_resolution_id']
 
-    def conversation_message(self):
-        return ['client_conversation_id', 'conversation_metadata', 'send_state_type', 'creation_timestamp',
-        'conversation_version', 'sync_watermark', 'tombstoned_at_timestamp', 'nullable_sync_watermark', 'has_more_messages',
-        'source_page', 'last_senders']
+    def conversation_message_rownames(self, critical):
+        if critical:
+            return ['client_conversation_id', 'client_message_id', 'server_message_id', 'message_content',
+                    'creation_timestamp', 'read_timestamp', 'content_type', 'sender_id',]
+        return ['client_conversation_id', 'client_message_id', 'server_message_id', 'client_resolution_id',
+        'local_message_content_id', 'message_content', 'message_state_type', 'creation_timestamp', 'read_timestamp',
+        'local_message_references', 'is_saved', 'is_viewed_by_user', 'remote_media_count', 'content_type',
+        'content_read_release_policy', 'released_by_count', 'sender_id', 'is_released_by_user', 'release_state',
+        'hidden_from_platform']
 
     def known_tables_and_rows(self):
         text="""
@@ -461,18 +501,67 @@ conversation_message"""
                     """
         return description
 
-class cachecontroller():
+class primarydocobjects_queries():
 
     def __init__(self, snapchat_version, timefilter, systemtype):
         self.snapchat_version = snapchat_version
         self.timefilter = timefilter
         self.systemtype = systemtype
 
-    def CACHE_FILE_METADATA(self):
+
+class contentmanagers_queries():
+
+    def __init__(self, snapchat_version, timefilter, systemtype):
+        self.snapchat_version = snapchat_version
+        self.timefilter = timefilter
+        self.systemtype = systemtype
+
+    def known_tables_and_rows(self):
+        text="""
+        GLOBAL_CONFIG_V2_TABLE
+        ['CONFIG_KEY', 'CONFIG_VALUE', 'CONFIG_LAST_UPDATED']
+        
+        CONTENT_OBJECT_TABLE
+        ['KEY', 'CONTENT_DEFINITION', 'CONTENT_STATE']
+        """
+        return text
+
+    def GLOBAL_CONFIG_V2_TABLE_rownames(self, critical):
+        if critical:
+            return ['CONFIG_KEY', 'CONFIG_VALUE', 'CONFIG_LAST_UPDATED']
+        return ['CONFIG_KEY', 'CONFIG_VALUE', 'CONFIG_LAST_UPDATED']
+
+
+    def CONTENT_OBJECT_TABLE_rownames(self, critical):
+        if critical:
+            return ['KEY', 'CONTENT_DEFINITION']
+        return ['KEY', 'CONTENT_DEFINITION', 'CONTENT_STATE']
+
+    def CONTENT_OBJECT_TABLE_description(self):
+        return None
+
+    def GLOBAL_CONFIG_V2_TABLE_decrisption(self):
+        return None
+
+
+
+class cachecontroller_queries():
+
+    def __init__(self, snapchat_version, timefilter, systemtype):
+        self.snapchat_version = snapchat_version
+        self.timefilter = timefilter
+        self.systemtype = systemtype
+
+    def CACHE_FILE_METADATA_rownames(self, critical):
+        if critical:
+            return ['USER_ID', 'CACHE_KEY', 'STORAGE_TYPE', 'TYPE', 'FILE_SIZE_BYTES', 'TOTAL_DISK_USED_BYTES',
+         'KNOWN_CONTENT_LENGTH_BYTES', 'LAST_READ_TIMESTAMP_MILLIS', 'DELETED_TIMESTAMP_MILLIS', 'CHILDREN']
         return ['USER_ID', 'CACHE_KEY', 'STORAGE_TYPE', 'TYPE', 'FILE_SIZE_BYTES', 'TOTAL_DISK_USED_BYTES',
          'KNOWN_CONTENT_LENGTH_BYTES', 'LAST_READ_TIMESTAMP_MILLIS', 'DELETED_TIMESTAMP_MILLIS', 'CHILDREN']
 
-    def CACHE_FILE_CLAIM(self):
+    def CACHE_FILE_CLAIM_rownames(self, critical):
+        if critical:
+            return ['CACHE_KEY', 'EXTERNAL_KEY']
         return ['USER_ID', 'CACHE_KEY', 'MEDIA_CONTEXT_TYPE', 'EXTERNAL_KEY', 'IS_AUTHORITATIVE',
      'EXPIRATION_TIMESTAMP_MILLIS', 'DELETED_TIMESTAMP_MILLIS']
 
