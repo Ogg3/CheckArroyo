@@ -31,9 +31,6 @@ from lib import *
 
 __version__ = "0-7-0"
 
-IOS_supported_versions = ['11.12.0', ]
-Android_supported_versions = ['11.51.0.37', ]
-
 def main():
 
     parser = argparse.ArgumentParser(description='CheckArroyo '+__version__+': Snapchat chat parser.')
@@ -43,7 +40,9 @@ def main():
     parser.add_argument('-m', '--mode', required=True, action="store",
                         help='Select mode, IOS - iPhone, AND - Android, ARY - only arroyo')
     parser.add_argument('-s', '--snapchat_version', required=True, action="store",
-                        help='Select mode, IOS - iPhone, AND - Android, ARY - only arroyo')
+                        help='Specific the version of Snapchat, if the version is unknown or unsupported leave blank for a hail mary. '
+                             'Supported versions: iPhone [11.12.0] Android [11.51.0.37]'
+                             'If you version is')
     parser.add_argument('-n', '--no_attachmets', required=False, action="store_true",
                         help='Use if attachments should NOT be checked')
     parser.add_argument('-c', '--custom_paths', required=False, action="store_true",

@@ -50,6 +50,7 @@ class IO_paths():
     output_path = None
     report_time = ""
     research_txt = ""
+    research_folder = ""
     store_data = ""
 
     def __init__(self, args):
@@ -66,6 +67,9 @@ class IO_paths():
         # Make conversation directory
         os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "conversation-reports")
 
+        # Make research_folder directory
+        os.mkdir(args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "research_folder")
+
         # Create report file
         with open(args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "Report.html", "w") as a:
             a.write("")
@@ -74,23 +78,18 @@ class IO_paths():
         with open(args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "log.txt", "w") as a:
             a.write("")
 
-        with open(args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "raw_protobufs.txt", "w") as a:
-            a.write("")
 
         self.report_folder = args.output_path + "\\" + "CheckArroyo-report-" + report_time
         self.report_file = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "Report.html"
         self.report_convos = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "conversation-reports" + "\\"
         self.input_path = args.input_path
         self.output_path = args.output_path
-        self.research_txt = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "raw_protobufs.txt"
-        IO_paths.research_txt = os.path.abspath(
-            args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "raw_protobufs.txt")
         IO_paths.log_file = os.path.abspath(
             args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "log.txt")
         IO_paths.report_file = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "Report.html"
         IO_paths.report_convos = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "conversation-reports" + "\\"
-        # Connect to database
         self.store_data = args.output_path + "\\" + "CheckArroyo-report-" + IO_paths.report_time + "\\" + "store_data.db"
+        self.report_folder = args.output_path + "\\" + "CheckArroyo-report-" + report_time + "\\" + "research_folder" + "\\"
 
 
 

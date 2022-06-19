@@ -26,6 +26,7 @@ import struct
 from lib import *
 
 
+
 class database():
     """
     For a given database, do things
@@ -42,8 +43,8 @@ class database():
             conn = sqlite3.connect('file:'+self.database+'?mode=ro', uri=True)
             return conn
         except Exception as e:
-            warning("Could not connect to "+str(self.database))
-            error(e, True)
+            error("Could not connect to "+str(self.database), False)
+            #error(e, False)
             return False
 
     def execute_querie(self, querie):
@@ -51,10 +52,11 @@ class database():
         Execute a querie on a database
         If querie results is only one
         """
-        try:
-            result = []
+        result = []
 
-            conn = self.connect_readonly()
+        conn = self.connect_readonly()
+
+        if conn != False:
 
             curs = conn.cursor()
 
@@ -69,8 +71,8 @@ class database():
             conn.close()
 
             return result
-        except Exception as e:
-            error(e, True)
+        else:
+            return False
 
 
     def get_freelistpages(self):
@@ -89,7 +91,7 @@ class database():
         """
         tables = self.execute_querie("SELECT name FROM sqlite_master WHERE type='table'")
 
-        if tables != []:
+        if tables != [] and tables != False:
             return tables
         else:
             warning(self.database+" has no tables!")
@@ -100,7 +102,7 @@ class database():
         """
         rownames = self.execute_querie("PRAGMA table_info({})".format(table))
 
-        if rownames != []:
+        if rownames != [] and rownames != False:
 
             names = []
 
@@ -117,7 +119,7 @@ class database():
         """
         tables = self.execute_querie("SELECT count(name) FROM sqlite_master WHERE type='table'")
 
-        if tables != []:
+        if tables != [] and tables != False:
             return tables[0]
         else:
             warning(self.database + " has no tables!")
@@ -128,7 +130,7 @@ class database():
         """
         rownames = self.execute_querie("PRAGMA table_info({})".format(table))
 
-        if rownames != []:
+        if rownames != [] and rownames != False:
             return len(rownames)
         else:
             warning("{0} table {1} has no rows".format(self.database, table))
@@ -139,7 +141,7 @@ class database():
         """
         rownames = self.execute_querie("PRAGMA table_info({})".format(table))
 
-        if rownames != []:
+        if rownames != [] and rownames != False:
 
             for name in rownames:
                 if name[1] == rowname:
@@ -169,14 +171,20 @@ class database():
         """
         Get the structure of a database including comments in the sql statments
         """
+        string=""""""
         data = self.execute_querie("SELECT sql FROM sqlite_master WHERE type='table'")
-        for table in self.get_tablenames():
-            print(table)
-            for i in data:
-                if "--" in i and table == i.split(" ")[2]:
-                    print(i)
-            print(self.get_rownames(table))
-            print()
+        if data != False:
+            for table in self.get_tablenames():
+                string += table+'\n'
+                string += '\t'+str(self.get_rownames(table))+'\n'
+                for i in data:
+                    if "--" in i and table == i.split(" ")[2]:
+                        string += '\t'+i
+                string += '\n'
+
+            return string
+        else:
+            return None
 
 
 class store_data():
@@ -300,6 +308,34 @@ class store_data():
         except Exception as e:
             error(e, True)
 
+    def export_users(self, IO_paths):
+        """
+        Get all usernames and snapchat ids
+        """
+        ret = []
+        users = []
+
+        conn = sqlite3.connect(self.path)
+        qr = "SELECT username, snapchat_id FROM Participants"
+
+        curs = conn.execute(qr)
+
+        # Get usernames
+        for res in curs:
+            ret.append(res)
+
+        # Get the occurrence of every participant
+        for username, snapchat_id in ret:
+
+            # Check if user is in dict
+            if (username, snapchat_id) not in users:
+                users.append((username, snapchat_id))
+
+        # Write contacts to file file
+        with open(IO_paths.report_folder + "contacts.txt", "w") as a:
+            for username, snapchat_id in users:
+                a.write(username + ", " + snapchat_id + "\n")
+
 
 class arroyo_queries():
 
@@ -308,10 +344,40 @@ class arroyo_queries():
         self.timefilter = timefilter
         self.systemtype = systemtype
 
-    def conversation_identifier_rownames(self, critical):
+    def conversation_id(self):
+        """
+        {"table", "rowname"}
+        """
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                return [{"conversation", "client_conversation_id"}]
+            # Hail mary
+            else:
+                return [{"conversation", "client_conversation_id"}]
+
+
+    def conversation_id_message(self):
+        """
+        {"table", "rowname"}
+        """
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                return [{"conversation_message", "client_conversation_id"}]
+            # Hail mary
+            else:
+                return [{"conversation_message", "client_conversation_id"}]
+
+    def conversation_rownames(self, critical):
         if critical:
-            return ['client_conversation_id', 'server_conversation_id']
-        return ['client_conversation_id', 'server_conversation_id', 'client_resolution_id']
+            if self.systemtype == "IOS":
+                if self.snapchat_version == 11120:
+                    return ['client_conversation_id']
+                # Hail mary
+                else:
+                    return ['client_conversation_id']
+        return ['client_conversation_id', 'conversation_metadata', 'send_state_type', 'creation_timestamp',
+        'conversation_version', 'sync_watermark', 'tombstoned_at_timestamp', 'nullable_sync_watermark', 'has_more_messages',
+        'source_page', 'last_senders']
 
     def conversation_message_rownames(self, critical):
         if critical:
@@ -323,79 +389,18 @@ class arroyo_queries():
         'content_read_release_policy', 'released_by_count', 'sender_id', 'is_released_by_user', 'release_state',
         'hidden_from_platform']
 
-    def known_tables_and_rows(self):
-        text="""
-        required_values
-        ['key', 'value']
-
-        send_state
-        ['send_state_type']
-
-        message_state
-        ['state_type']
-
-        conversation_identifier
-        ['client_conversation_id', 'server_conversation_id', 'client_resolution_id']
-
-        conversation ['client_conversation_id', 'conversation_metadata', 'send_state_type', 'creation_timestamp',
-        'conversation_version', 'sync_watermark', 'tombstoned_at_timestamp', 'nullable_sync_watermark', 'has_more_messages',
-        'source_page', 'last_senders']
-
-        conversation_message ['client_conversation_id', 'client_message_id', 'server_message_id', 'client_resolution_id',
-        'local_message_content_id', 'message_content', 'message_state_type', 'creation_timestamp', 'read_timestamp',
-        'local_message_references', 'is_saved', 'is_viewed_by_user', 'remote_media_count', 'content_type',
-        'content_read_release_policy', 'released_by_count', 'sender_id', 'is_released_by_user', 'release_state',
-        'hidden_from_platform']
-
-        local_message_content ['local_message_content_id', 'content', 'local_message_references', 'metrics_message_type',
-        'platform_analytics', 'metrics_message_media_type', 'task_queue_id', 'state', 'client_resolution_id',
-        'send_timestamp', 'content_type', 'save_policy', 'incidental_attachments', 'missing_last_response']
-
-        flow_orchestration_task ['task_queue_id', 'order_id', 'starting_timestamp_ms', 'retry_count', 'mutation_type',
-        'order_grouping', 'order_key', 'operation_attempt_type']
-
-        conversation_local_message_content
-        ['client_conversation_id', 'local_message_content_id', 'client_message_id']
-
-        story_local_message_content
-        ['story_id', 'local_message_content_id', 'destination_data']
-
-        update_conversation_message ['reference_client_conversation_id', 'reference_client_message_id',
-        'client_resolution_id', 'request', 'send_state_type', 'creation_timestamp', 'task_queue_id', 'update_case']
-
-        update_conversation ['reference_client_conversation_id', 'client_resolution_id', 'message_content',
-        'send_state_type', 'creation_timestamp', 'conversation_version', 'task_queue_id']
-
-        feed_sync
-        ['sentinel', 'token']
-
-        feed_entry ['client_conversation_id', 'version_id', 'last_updated_timestamp', 'display_timestamp', 'message_type',
-        'message_state', 'viewed', 'conversation_title', 'conversation_type', 'legacyConversationInfo',
-        'legacyMigrationInfo', 'legacyNeedsSync', 'participants', 'lastActors', 'feedItemCreator', 'priority',
-        'last_received_chat_id', 'last_viewed_chat_id', 'last_chat_sender', 'unviewed_silent_snaps', 'unviewed_audio_snaps',
-        'unviewed_silent_snaps_timestamps', 'unviewed_audio_snaps_timestamps', 'last_sender', 'tombstoned', 'owning_snap',
-        'clear_conversation_timestamp_ms', 'last_sent_chat_server_id', 'streak_count', 'streak_expiration_timestamp_ms',
-        'streak_version', 'chat_notification_preference', 'game_notification_preference', 'is_friendlink_pending',
-        'feed_visibility']
-
-        user_conversation
-        ['user_id', 'client_conversation_id', 'conversation_type']
-
-        snap_download_status_info
-        ['client_conversation_id', 'client_message_id', 'server_message_id', 'download_status']
-
-        integer_id
-        ['id_type', 'id_value']
-            """
-        return text
-
     def conversation_message(self):
 
         if self.timefilter == "" or self.timefilter is None:
             querie="""
 SELECT 
-    client_conversation_id, client_message_id, server_message_id, client_resolution_id, 
-    local_message_content_id,message_content, message_state_type, 
+    client_conversation_id, 
+    client_message_id, 
+    server_message_id, 
+    client_resolution_id, 
+    local_message_content_id,
+    message_content, 
+    message_state_type, 
     strftime('%Y-%m-%d %H:%M:%S.', "creation_timestamp"/1000, 'unixepoch') || ("creation_timestamp"%1000), 
     strftime('%Y-%m-%d %H:%M:%S.', "read_timestamp"/1000, 'unixepoch') || ("read_timestamp"%1000), 
     local_message_references, is_saved, is_viewed_by_user, remote_media_count, content_type, 
@@ -445,61 +450,6 @@ conversation_message"""
             BETWEEN '{0}' AND '{1}' """.format(time1, time2)
         return querie
 
-    def conversation_message_description(self):
-        description = """
-        - Is a comment made by me, -- is from the snapchat devs
-                    client_conversation_id 
-                        - uniq conversation id
-                    client_message_id 
-                        - id for message
-                    server_message_id 
-                        - id for message 
-                        -- server monotonically increasing id, nullable if pending message
-                    client_resolution_id 
-                        - unknown 
-                        -- Not null. Intentionally not adding this as SQL constraint since we had null data, in the past during internal testing.
-                    local_message_content_id integer
-                        - unknown 
-                        -- nullable if message wasn't created on this device
-                    message_content 
-                        - message
-                    message_state_type 
-                        - unknown, there i refrences to this in the message state table (PREPARING, SENDING, FAILED, PENDING_DECRYPTION, COMMITTED)
-                    creation_timestamp
-                    read_timestamp integer 
-                        -- timestamp when the message is first marked read by any participants
-                    local_message_references 
-                        -- if the message originates from the device we keep local media reference around to have stable local cache ids
-                    is_saved 
-                        -- bool. set to true iff message_content.metadata().saved_by_size() > 0
-                    is_viewed_by_user 
-                        -- bool. set to true iff message.content.metadata().read_by() contains current user
-                    remote_media_count 
-                        -- size of the media reference list message.content.contents().media_reference_lists_size()
-                    content_type 
-                        -- type of the content as defined in message.content.contents().content_type()
-                    content_read_release_policy 
-                        -- type of the content read release policy as defined in message.content.release_policy()
-                    released_by_count 
-                        -- size of message.content.metadata().released_by_size() list
-                    sender_id text
-                        -- message.content.sender_id()
-                    is_released_by_user
-                        -- bool. true iff message is released by user,  message.content.metadata().released_by() contains current user id
-                    release_state integer
-                        -- enum. Release state of the message. Starts optional, not set for conversations that don't send release messages or messages that don't require individual release.
-                    hidden_from_platform
-                        default 0, -- bool Should hide this message from platform. Read/Release watermark and save state can override this value.
-
-            primary key(client_conversation_id, client_message_id),
-            unique (client_conversation_id, server_message_id),
-
-            foreign key(client_conversation_id) references conversation_identifier(client_conversation_id),
-            foreign key(message_state_type) references message_state(state_type),
-            foreign key(local_message_content_id) references local_message_content(local_message_content_id)
-        )
-                    """
-        return description
 
 class primarydocobjects_queries():
 
@@ -516,16 +466,6 @@ class contentmanagers_queries():
         self.timefilter = timefilter
         self.systemtype = systemtype
 
-    def known_tables_and_rows(self):
-        text="""
-        GLOBAL_CONFIG_V2_TABLE
-        ['CONFIG_KEY', 'CONFIG_VALUE', 'CONFIG_LAST_UPDATED']
-        
-        CONTENT_OBJECT_TABLE
-        ['KEY', 'CONTENT_DEFINITION', 'CONTENT_STATE']
-        """
-        return text
-
     def GLOBAL_CONFIG_V2_TABLE_rownames(self, critical):
         if critical:
             return ['CONFIG_KEY', 'CONFIG_VALUE', 'CONFIG_LAST_UPDATED']
@@ -533,9 +473,14 @@ class contentmanagers_queries():
 
 
     def CONTENT_OBJECT_TABLE_rownames(self, critical):
-        if critical:
-            return ['KEY', 'CONTENT_DEFINITION']
-        return ['KEY', 'CONTENT_DEFINITION', 'CONTENT_STATE']
+        if self.snapchat_version <= 11120 and self.systemtype == "IOS":
+            if critical:
+                return ['KEY', 'CONTENT_DEFINITION']
+            return ['KEY', 'CONTENT_DEFINITION', 'CONTENT_STATE']
+        elif self.snapchat_version > 11120 and self.systemtype == "IOS":
+            if critical:
+                return ['CONTENT_KEY', 'CONTENT_DEFINITION']
+            return ['KEY', 'CONTENT_DEFINITION', 'CONTENT_STATE']
 
     def CONTENT_OBJECT_TABLE_description(self):
         return None
