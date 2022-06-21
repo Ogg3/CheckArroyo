@@ -337,61 +337,297 @@ class store_data():
                 a.write(username + ", " + snapchat_id + "\n")
 
 
-class arroyo_queries():
+class chat():
 
-    def __init__(self, snapchat_version, timefilter, systemtype):
+    def __init__(self, snapchat_version,
+                 timefilter,
+                 systemtype,
+                 paths):
         self.snapchat_version = snapchat_version
         self.timefilter = timefilter
         self.systemtype = systemtype
+        self.paths = paths
+
 
     def conversation_id(self):
         """
-        {"table", "rowname"}
+        {"Database": "name",
+        "tablename": "name",
+        "Rowname": "name",
+        }
         """
         if self.systemtype == "IOS":
             if self.snapchat_version == 11120:
-                return [{"conversation", "client_conversation_id"}]
+                return [{"databasename":"arroyo.db",
+                         "tablename":"conversation",
+                         "rowname":"client_conversation_id"
+                         }]
             # Hail mary
             else:
-                return [{"conversation", "client_conversation_id"}]
+                return [{"databasename":"arroyo.db",
+                         "tablename":"conversation",
+                         "rowname":"client_conversation_id"
+                         }]
 
 
     def conversation_id_message(self):
         """
-        {"table", "rowname"}
+        {"Database": "name",
+        "tablename": "name",
+        "Rowname": "name",
+        }
         """
         if self.systemtype == "IOS":
             if self.snapchat_version == 11120:
-                return [{"conversation_message", "client_conversation_id"}]
+                return [{"databasename":"arroyo.db",
+                         "tablename":"conversation_message",
+                         "rowname":"client_conversation_id"
+                         }]
             # Hail mary
             else:
-                return [{"conversation_message", "client_conversation_id"}]
+                return [{"databasename":"arroyo.db",
+                         "tablename":"conversation_message",
+                         "rowname":"client_conversation_id"
+                         }]
 
-    def conversation_rownames(self, critical):
-        if critical:
-            if self.systemtype == "IOS":
-                if self.snapchat_version == 11120:
-                    return ['client_conversation_id']
-                # Hail mary
-                else:
-                    return ['client_conversation_id']
-        return ['client_conversation_id', 'conversation_metadata', 'send_state_type', 'creation_timestamp',
-        'conversation_version', 'sync_watermark', 'tombstoned_at_timestamp', 'nullable_sync_watermark', 'has_more_messages',
-        'source_page', 'last_senders']
+    def client_message_id(self):
+        """
+        {"Database": "name",
+        "tablename": "name",
+        "Rowname": "name",
+        }
+        """
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                return [{"databasename": "arroyo.db",
+              "tablename": "conversation_message",
+              "rowname": "client_message_id"
+              }]
 
-    def conversation_message_rownames(self, critical):
-        if critical:
-            return ['client_conversation_id', 'client_message_id', 'server_message_id', 'message_content',
-                    'creation_timestamp', 'read_timestamp', 'content_type', 'sender_id',]
-        return ['client_conversation_id', 'client_message_id', 'server_message_id', 'client_resolution_id',
-        'local_message_content_id', 'message_content', 'message_state_type', 'creation_timestamp', 'read_timestamp',
-        'local_message_references', 'is_saved', 'is_viewed_by_user', 'remote_media_count', 'content_type',
-        'content_read_release_policy', 'released_by_count', 'sender_id', 'is_released_by_user', 'release_state',
-        'hidden_from_platform']
+            # Hail mary
+            else:
+                return [{"databasename": "arroyo.db",
+              "tablename": "conversation_message",
+              "rowname": "client_message_id"
+              }]
 
-    def conversation_message(self):
+    def server_message_id(self):
+        """
+        {"Database": "name",
+        "tablename": "name",
+        "Rowname": "name",
+        }
+        """
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                return [{"databasename": "arroyo.db",
+              "tablename": "conversation_message",
+              "rowname": "server_message_id"
+              }]
+            # Hail mary
+            else:
+                return [{"databasename": "arroyo.db",
+              "tablename": "conversation_message",
+              "rowname": "server_message_id"
+              }]
+
+    def message_content(self):
+        """
+        {"Database": "name",
+        "tablename": "name",
+        "Rowname": "name",
+        }
+        """
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                return [{"databasename": "arroyo.db",
+                         "tablename": "conversation_message",
+                         "rowname": "message_content"
+                         }]
+            # Hail mary
+            else:
+                return [{"databasename": "arroyo.db",
+                         "tablename": "conversation_message",
+                         "rowname": "message_content"
+                         }]
+
+    def creation_timestamp(self):
+        """
+        {"Database": "name",
+        "tablename": "name",
+        "Rowname": "name",
+        }
+        """
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                return [{"databasename": "arroyo.db",
+                         "tablename": "conversation_message",
+                         "rowname": "creation_timestamp"
+                         }]
+            # Hail mary
+            else:
+                return [{"databasename": "arroyo.db",
+                         "tablename": "conversation_message",
+                         "rowname": "creation_timestamp"
+                         }]
+
+    def read_timestamp(self):
+        """
+        {"Database": "name",
+        "tablename": "name",
+        "Rowname": "name",
+        }
+        """
+
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                return [{"databasename": "arroyo.db",
+                         "tablename": "conversation_message",
+                         "rowname": "read_timestamp"
+                         }]
+            # Hail mary
+            else:
+                return [{"databasename": "arroyo.db",
+                         "tablename": "conversation_message",
+                         "rowname": "read_timestamp"
+                         }]
+
+    def content_type(self):
+        """
+        {"Database": "name",
+        "tablename": "name",
+        "Rowname": "name",
+        }
+        """
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                return [{"databasename": "arroyo.db",
+                         "tablename": "conversation_message",
+                         "rowname": "content_type"
+                         }]
+            # Hail mary
+            else:
+                return [{"databasename": "arroyo.db",
+                         "tablename": "conversation_message",
+                         "rowname": "content_type"
+                         }]
+
+    def sender_id(self):
+        """
+        {"Database": "name",
+        "tablename": "name",
+        "Rowname": "name",
+        }
+        """
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                return [{"databasename": "arroyo.db",
+                         "tablename": "conversation_message",
+                         "rowname": "sender_id"
+                         }]
+            # Hail mary
+            else:
+                return [{"databasename": "arroyo.db",
+                         "tablename": "conversation_message",
+                         "rowname": "sender_id"
+                         }]
+
+    def attachments_method1(self, key):
+        """
+        {"Database": "name",
+        "tablename": "name",
+        "Rowname": "name",
+        }
+        """
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                return [{"databasename": "contentManagerDb.db",
+                         "tablename": "CONTENT_OBJECT_TABLE",
+                         "rowname_key": "KEY",
+                         "rowname_data": "CONTENT_DEFINITION"
+                         }
+                        ]
+            # Hail mary
+            else:
+                return [{"databasename": "contentManagerDb.db",
+                         "tablename": "CONTENT_OBJECT_TABLE",
+                         "rowname": "KEY",
+                         "rowname_data": "CONTENT_DEFINITION"
+                         },
+                        {"databasename": "contentManagerDb.db",
+                         "tablename": "CONTENT_OBJECT_TABLE",
+                         "rowname_key": "CONTENT_KEY",
+                         "rowname_data": "CONTENT_DEFINITION"
+                         }
+                        ]
+
+    def attachments_method2(self, key):
+        """
+        return
+        True, data if success
+        False, None if failed
+        }
+
+        T0DO What if table doesnt exist
+        T0DO WHat if row doesnt exist
+        T0DO What if row has no data
+        """
+        if self.systemtype == "IOS":
+            if self.snapchat_version == 11120:
+                qr = """
+                    SELECT
+                    EXTERNAL_KEY
+                    FROM
+                    CACHE_FILE_CLAIM
+                    WHERE
+                    CACHE_KEY == '{}'
+                    """.format(key)
+                data = self.execute_querie(self.paths["cache_controller.db"], qr)
+                if data is not None:
+                    return data
+
+            # Hail mary
+            else:
+                return [{"databasename": "cache_controller.db",
+                         "tablename": "CACHE_FILE_CLAIM",
+                         "rowname_key": "CACHE_KEY",
+                         "rowname_data": "EXTERNAL_KEY"
+                         }
+                        ]
+
+    def execute_querie(self, path, qr):
+
+        # Cant call my database class here
+        try:
+            conn = sqlite3.connect(path)
+        except Exception as e:
+            error("Could not connect to " + str(self.paths["cache_controller.db"]), False)
+            return None
+
+        curser = conn.cursor()
+
+        curser.execute(qr)
+
+        result = []
+
+        for data in curser.fetchall():
+            if len(data) == 1:
+                result.append(data[0])
+            else:
+                result.append(data)
+
+        conn.close()
+
+        if result != []:
+            return result
+        else:
+            return None
+
+
+    def get_chat(self):
 
         if self.timefilter == "" or self.timefilter is None:
+            convid=self.conversation_id()
             querie="""
 SELECT 
     client_conversation_id, 
@@ -449,65 +685,3 @@ conversation_message"""
             strftime('%Y-%m-%d %H:%M:%S.', "creation_timestamp"/1000, 'unixepoch') || ("creation_timestamp"%1000) 
             BETWEEN '{0}' AND '{1}' """.format(time1, time2)
         return querie
-
-
-class primarydocobjects_queries():
-
-    def __init__(self, snapchat_version, timefilter, systemtype):
-        self.snapchat_version = snapchat_version
-        self.timefilter = timefilter
-        self.systemtype = systemtype
-
-
-class contentmanagers_queries():
-
-    def __init__(self, snapchat_version, timefilter, systemtype):
-        self.snapchat_version = snapchat_version
-        self.timefilter = timefilter
-        self.systemtype = systemtype
-
-    def GLOBAL_CONFIG_V2_TABLE_rownames(self, critical):
-        if critical:
-            return ['CONFIG_KEY', 'CONFIG_VALUE', 'CONFIG_LAST_UPDATED']
-        return ['CONFIG_KEY', 'CONFIG_VALUE', 'CONFIG_LAST_UPDATED']
-
-
-    def CONTENT_OBJECT_TABLE_rownames(self, critical):
-        if self.snapchat_version <= 11120 and self.systemtype == "IOS":
-            if critical:
-                return ['KEY', 'CONTENT_DEFINITION']
-            return ['KEY', 'CONTENT_DEFINITION', 'CONTENT_STATE']
-        elif self.snapchat_version > 11120 and self.systemtype == "IOS":
-            if critical:
-                return ['CONTENT_KEY', 'CONTENT_DEFINITION']
-            return ['KEY', 'CONTENT_DEFINITION', 'CONTENT_STATE']
-
-    def CONTENT_OBJECT_TABLE_description(self):
-        return None
-
-    def GLOBAL_CONFIG_V2_TABLE_decrisption(self):
-        return None
-
-
-
-class cachecontroller_queries():
-
-    def __init__(self, snapchat_version, timefilter, systemtype):
-        self.snapchat_version = snapchat_version
-        self.timefilter = timefilter
-        self.systemtype = systemtype
-
-    def CACHE_FILE_METADATA_rownames(self, critical):
-        if critical:
-            return ['USER_ID', 'CACHE_KEY', 'STORAGE_TYPE', 'TYPE', 'FILE_SIZE_BYTES', 'TOTAL_DISK_USED_BYTES',
-         'KNOWN_CONTENT_LENGTH_BYTES', 'LAST_READ_TIMESTAMP_MILLIS', 'DELETED_TIMESTAMP_MILLIS', 'CHILDREN']
-        return ['USER_ID', 'CACHE_KEY', 'STORAGE_TYPE', 'TYPE', 'FILE_SIZE_BYTES', 'TOTAL_DISK_USED_BYTES',
-         'KNOWN_CONTENT_LENGTH_BYTES', 'LAST_READ_TIMESTAMP_MILLIS', 'DELETED_TIMESTAMP_MILLIS', 'CHILDREN']
-
-    def CACHE_FILE_CLAIM_rownames(self, critical):
-        if critical:
-            return ['CACHE_KEY', 'EXTERNAL_KEY']
-        return ['USER_ID', 'CACHE_KEY', 'MEDIA_CONTEXT_TYPE', 'EXTERNAL_KEY', 'IS_AUTHORITATIVE',
-     'EXPIRATION_TIMESTAMP_MILLIS', 'DELETED_TIMESTAMP_MILLIS']
-
-
